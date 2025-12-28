@@ -1,0 +1,20 @@
+{
+  "name": "gamejan",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Jan's World - A Super Mario Bros style browser game",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "vite": "^4.5.14"
+  }
+}
