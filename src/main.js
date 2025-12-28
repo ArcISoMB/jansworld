@@ -130,6 +130,7 @@ class GameScene extends Phaser.Scene {
     // Target is the door area
     const targetX = doorX - 50; // Platform should be slightly left of door
     const targetY = 120; // Final platform height
+    const doorPlatformY = 120; // Y position of platform beneath the door
     
     for (let i = 0; i < numPlatforms; i++) {
       // Calculate progress towards target (0 to 1)
@@ -146,10 +147,19 @@ class GameScene extends Phaser.Scene {
       // Ensure Y goes upward mostly (can't jump too high in one step)
       let finalY = Math.max(clampedY, currentY - maxJumpDistanceY);
       
+      // CRITICAL: Never place platforms higher than the door platform (would block the door)
+      if (finalY < doorPlatformY) {
+        finalY = doorPlatformY;
+      }
+      
       // IMPORTANT: Ensure minimum vertical gap to prevent getting stuck
       // If platform is too close vertically, push it further away
       if (Math.abs(finalY - currentY) < minVerticalGap && finalY < currentY) {
         finalY = currentY - minVerticalGap;
+        // Re-check door platform constraint
+        if (finalY < doorPlatformY) {
+          finalY = doorPlatformY;
+        }
       }
       
       // Ensure minimum horizontal gap between platforms (or make them overlap/far apart)
