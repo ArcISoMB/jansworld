@@ -8,16 +8,16 @@ class GameScene extends Phaser.Scene {
 
   preload() {
     // Load alien character sprites
-    this.load.image('alienStand', 'assets/sprites/Extra animations and enemies/Alien sprites/alienBeige_stand.png');
-    this.load.image('alienWalk1', 'assets/sprites/Extra animations and enemies/Alien sprites/alienBeige_walk1.png');
-    this.load.image('alienWalk2', 'assets/sprites/Extra animations and enemies/Alien sprites/alienBeige_walk2.png');
-    this.load.image('alienJump', 'assets/sprites/Extra animations and enemies/Alien sprites/alienBeige_jump.png');
+    this.load.image('alienStand', 'sprites/Extra animations and enemies/Alien sprites/alienBeige_stand.png');
+    this.load.image('alienWalk1', 'sprites/Extra animations and enemies/Alien sprites/alienBeige_walk1.png');
+    this.load.image('alienWalk2', 'sprites/Extra animations and enemies/Alien sprites/alienBeige_walk2.png');
+    this.load.image('alienJump', 'sprites/Extra animations and enemies/Alien sprites/alienBeige_jump.png');
     
     // Load platform and door tiles
-    this.load.image('platform', 'assets/sprites/Base pack/Tiles/grassMid.png');
-    this.load.image('floor', 'assets/sprites/Base pack/Tiles/grassMid.png');
-    this.load.image('doorClosed', 'assets/sprites/Base pack/Tiles/door_closedMid.png');
-    this.load.image('doorTop', 'assets/sprites/Base pack/Tiles/door_closedTop.png');
+    this.load.image('platform', 'sprites/Base pack/Tiles/grassMid.png');
+    this.load.image('floor', 'sprites/Base pack/Tiles/grassMid.png');
+    this.load.image('doorClosed', 'sprites/Base pack/Tiles/door_closedMid.png');
+    this.load.image('doorTop', 'sprites/Base pack/Tiles/door_closedTop.png');
   }
 
   create() {
@@ -117,6 +117,8 @@ class GameScene extends Phaser.Scene {
     const maxJumpDistanceX = 200; // Maximum horizontal jump distance
     const maxJumpDistanceY = 150; // Maximum vertical jump distance (up)
     const maxFallDistance = 300; // Can fall down any distance
+    const minVerticalGap = 100; // Minimum vertical gap to prevent getting stuck
+    const minHorizontalGap = 120; // Minimum horizontal gap between platforms
     
     const numPlatforms = 5 + Math.floor(Math.random() * 2); // 5-6 platforms
     const platforms = [];
@@ -142,10 +144,28 @@ class GameScene extends Phaser.Scene {
       const clampedY = Math.max(targetY, Math.min(currentY + maxFallDistance, nextY));
       
       // Ensure Y goes upward mostly (can't jump too high in one step)
-      const finalY = Math.max(clampedY, currentY - maxJumpDistanceY);
+      let finalY = Math.max(clampedY, currentY - maxJumpDistanceY);
       
-      platforms.push({ x: clampedX, y: finalY });
-      currentX = clampedX;
+      // IMPORTANT: Ensure minimum vertical gap to prevent getting stuck
+      // If platform is too close vertically, push it further away
+      if (Math.abs(finalY - currentY) < minVerticalGap && finalY < currentY) {
+        finalY = currentY - minVerticalGap;
+      }
+      
+      // Ensure minimum horizontal gap between platforms (or make them overlap/far apart)
+      let finalX = clampedX;
+      const horizontalDistance = Math.abs(finalX - currentX);
+      if (horizontalDistance < minHorizontalGap && horizontalDistance > 10) {
+        // Either push it further away or move it closer (to overlap/be far)
+        if (finalX > currentX) {
+          finalX = currentX + minHorizontalGap;
+        } else {
+          finalX = currentX - minHorizontalGap;
+        }
+      }
+      
+      platforms.push({ x: finalX, y: finalY });
+      currentX = finalX;
       currentY = finalY;
     }
     
