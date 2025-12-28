@@ -36,6 +36,26 @@ class GameScene extends Phaser.Scene {
     this.speed = 5;
 
     // Enable touch/pointer input for mobile
+    this.input.on('pointerdown', (pointer) => {
+      this.targetX = pointer.x;
+      this.targetY = pointer.y;
+      this.isMoving = true;
+    });
+
+    this.input.on('pointermove', (pointer) => {
+      if (pointer.isDown) {
+        this.targetX = pointer.x;
+        this.targetY = pointer.y;
+      }
+    });
+
+    this.input.on('pointerup', () => {
+      this.isMoving = false;
+    });
+
+    this.isMoving = false;
+  }
+
   update() {
     // Handle continuous key input for smooth movement
     if (this.keys.right.isDown) {
@@ -62,26 +82,6 @@ class GameScene extends Phaser.Scene {
         this.sprite.y += (dy / distance) * this.speed;
       }
     }
-  }   this.isMoving = false;
-    });
-
-    this.isMoving = false;
-  }
-
-  update() {
-    // Handle continuous key input for smooth movement
-    if (this.keys.right.isDown) {
-      this.sprite.x += this.speed;
-    }
-    if (this.keys.left.isDown) {
-      this.sprite.x -= this.speed;
-    }
-    if (this.keys.up.isDown) {
-      this.sprite.y -= this.speed;
-    }
-    if (this.keys.down.isDown) {
-      this.sprite.y += this.speed;
-    }
   }
 }
 
@@ -98,6 +98,10 @@ const config = {
       debug: false
     }
   }
+};
+
+const game = new Phaser.Game(config);
+
 };
 
 const game = new Phaser.Game(config);
