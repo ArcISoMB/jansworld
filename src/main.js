@@ -7,7 +7,17 @@ class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // No assets to load for minimal example
+    // Load alien character sprites
+    this.load.image('alienStand', 'assets/sprites/Extra animations and enemies/Alien sprites/alienBeige_stand.png');
+    this.load.image('alienWalk1', 'assets/sprites/Extra animations and enemies/Alien sprites/alienBeige_walk1.png');
+    this.load.image('alienWalk2', 'assets/sprites/Extra animations and enemies/Alien sprites/alienBeige_walk2.png');
+    this.load.image('alienJump', 'assets/sprites/Extra animations and enemies/Alien sprites/alienBeige_jump.png');
+    
+    // Load platform and door tiles
+    this.load.image('platform', 'assets/sprites/Base pack/Tiles/grassMid.png');
+    this.load.image('floor', 'assets/sprites/Base pack/Tiles/grassMid.png');
+    this.load.image('doorClosed', 'assets/sprites/Base pack/Tiles/door_closedMid.png');
+    this.load.image('doorTop', 'assets/sprites/Base pack/Tiles/door_closedTop.png');
   }
 
   create() {
@@ -21,11 +31,34 @@ class GameScene extends Phaser.Scene {
     // Generate level
     this.generateLevel();
 
-    // Create player character (blue block)
-    this.player = this.add.rectangle(100, 440, 32, 48, 0x0066ff);
-    this.physics.add.existing(this.player);
-    this.player.body.setCollideWorldBounds(true);
+    // Create player character (alien sprite)
+    this.player = this.physics.add.sprite(100, 440, 'alienStand');
+    this.player.setCollideWorldBounds(true);
     this.player.body.setGravityY(800);
+    this.player.setScale(0.8); // Adjust size if needed
+
+    // Create animations for the player
+    this.anims.create({
+      key: 'walk',
+      frames: [
+        { key: 'alienWalk1' },
+        { key: 'alienWalk2' }
+      ],
+      frameRate: 10,
+      repeat: -1
+    });
+
+    this.anims.create({
+      key: 'idle',
+      frames: [{ key: 'alienStand' }],
+      frameRate: 10
+    });
+
+    this.anims.create({
+      key: 'jump',
+      frames: [{ key: 'alienJump' }],
+      frameRate: 10
+    });
 
     // Add collision between player and platforms
     this.physics.add.collider(this.player, this.platforms);
@@ -66,51 +99,88 @@ class GameScene extends Phaser.Scene {
     // Create platforms group (static physics bodies)
     this.platforms = this.physics.add.staticGroup();
 
-    // Create floor - full width at bottom (higher up to leave space for buttons)
-    const floor = this.add.rectangle(400, 520, 800, 40, 0x4a4a4a);
-    this.platforms.add(floor);
-
-    // Generate random platforms that create a path to the door
-    // Door is in upper right corner at approximately (730, 80)
-    const doorX = 730;
-    const doorY = 80;
-
-    // Create platforms with guaranteed reachability
-    // We'll create platforms in segments from bottom to top
-    const numPlatforms = 4 + Math.floor(Math.random() * 3); // 4-6 platforms
-    
-    for (let i = 0; i < numPlatforms; i++) {
-      // Calculate Y position - platforms go from bottom to top
-      const minY = 150 + (i * 50);
-      const maxY = 450 - (i * 30);
-      const y = Math.random() * (maxY - minY) + minY;
-      
-      // Calculate X position - bias towards right side for higher platforms
-      const minX = 100;
-      const maxX = 700;
-      const bias = i / numPlatforms; // 0 to 1
-      const x = Math.random() * (maxX - minX) * (1 - bias * 0.3) + minX + (bias * 150);
-      
-      const width = 80 + Math.random() * 100; // 80-180 width
-      const platform = this.add.rectangle(x, y, width, 20, 0x6b8e23);
-      this.platforms.add(platform);
+    // Create floor - use multiple tiles
+    const floorY = 520;
+    const tileWidth = 70; // Approximate width of grass tile
+    for (let x = 0; x < 800; x += tileWidth) {
+      const tile = this.platforms.create(x + tileWidth/2, floorY, 'floor');
+      tile.setScale(1).refreshBody();
     }
 
-    // Add a final platform near the door to ensure it's reachable
-    const finalPlatform = this.add.rectangle(680, 120, 120, 20, 0x6b8e23);
-    this.platforms.add(finalPlatform);
+    // Generate random platforms that create a path to the door
+    // Door is in upper right corner at approximately (730, 50)
+    const doorX = 730;
+    const doorY = 50;
+
+    // Create a guaranteed path of platforms from start to door
+    // Each platform must be within jumping distance (horizontally and vertically)
+    const maxJumpDistanceX = 200; // Maximum horizontal jump distance
+    const maxJumpDistanceY = 150; // Maximum vertical jump distance (up)
+    const maxFallDistance = 300; // Can fall down any distance
+    
+    const numPlatforms = 5 + Math.floor(Math.random() * 2); // 5-6 platforms
+    const platforms = [];
+    
+    // Starting position (player starts at x=100, on floor at y=520)
+    let currentX = 100;
+    let currentY = floorY;
+    
+    // Target is the door area
+    const targetX = doorX - 50; // Platform should be slightly left of door
+    const targetY = 120; // Final platform height
+    
+    for (let i = 0; i < numPlatforms; i++) {
+      // Calculate progress towards target (0 to 1)
+      const progress = (i + 1) / numPlatforms;
+      
+      // Move towards target, ensuring each step is reachable
+      const nextX = currentX + (targetX - currentX) * (1 / (numPlatforms - i)) + (Math.random() - 0.5) * 60;
+      const nextY = currentY - (currentY - targetY) * (1 / (numPlatforms - i)) + (Math.random() - 0.5) * 40;
+      
+      // Clamp to ensure reachability
+      const clampedX = Math.max(currentX - maxJumpDistanceX, Math.min(currentX + maxJumpDistanceX, nextX));
+      const clampedY = Math.max(targetY, Math.min(currentY + maxFallDistance, nextY));
+      
+      // Ensure Y goes upward mostly (can't jump too high in one step)
+      const finalY = Math.max(clampedY, currentY - maxJumpDistanceY);
+      
+      platforms.push({ x: clampedX, y: finalY });
+      currentX = clampedX;
+      currentY = finalY;
+    }
+    
+    // Create platform tiles for each platform in the path
+    platforms.forEach(platform => {
+      const width = 100 + Math.random() * 80; // 100-180 width
+      const numTiles = Math.floor(width / 70);
+      
+      for (let t = 0; t < numTiles; t++) {
+        const tileX = platform.x - (numTiles * 35) + (t * 70) + 35;
+        const tile = this.platforms.create(tileX, platform.y, 'platform');
+        tile.setScale(1).refreshBody();
+      }
+    });
+
+    // Add a final platform directly below/near the door to ensure it's reachable
+    for (let t = 0; t < 2; t++) {
+      const tile = this.platforms.create(680 + (t * 70), 120, 'platform');
+      tile.setScale(1).refreshBody();
+    }
 
     // Refresh the static group
     this.platforms.refresh();
 
     // Create the door in upper right corner
-    this.door = this.add.rectangle(doorX, doorY, 40, 60, 0xffd700); // Gold door
-    this.physics.add.existing(this.door);
+    this.door = this.physics.add.sprite(doorX, doorY - 35, 'doorTop');
     this.door.body.setAllowGravity(false);
     this.door.body.setImmovable(true);
+    
+    const doorBottom = this.physics.add.sprite(doorX, doorY, 'doorClosed');
+    doorBottom.body.setAllowGravity(false);
+    doorBottom.body.setImmovable(true);
 
     // Add door label
-    this.add.text(doorX, doorY - 40, 'EXIT', {
+    this.add.text(doorX, doorY + 50, 'EXIT', {
       fontSize: '16px',
       fill: '#ffffff'
     }).setOrigin(0.5);
@@ -148,19 +218,36 @@ class GameScene extends Phaser.Scene {
     // Horizontal movement - keyboard or mobile
     if (this.cursors.left.isDown || this.mobileControls.left) {
       this.player.body.setVelocityX(-this.moveSpeed);
+      this.player.setFlipX(true); // Face left
+      if (this.player.body.touching.down) {
+        this.player.anims.play('walk', true);
+      }
     } else if (this.cursors.right.isDown || this.mobileControls.right) {
       this.player.body.setVelocityX(this.moveSpeed);
+      this.player.setFlipX(false); // Face right
+      if (this.player.body.touching.down) {
+        this.player.anims.play('walk', true);
+      }
     } else {
       this.player.body.setVelocityX(0);
+      if (this.player.body.touching.down) {
+        this.player.anims.play('idle', true);
+      }
     }
 
     // Jumping - keyboard or mobile, only if on ground or platform
     if ((Phaser.Input.Keyboard.JustDown(this.spaceKey) || this.mobileControls.jump) && 
         this.player.body.touching.down) {
       this.player.body.setVelocityY(this.jumpVelocity);
+      this.player.anims.play('jump', true);
       if (this.mobileControls.jump) {
         this.mobileControls.jump = false; // Prevent continuous jumping
       }
+    }
+
+    // Play jump animation when in air
+    if (!this.player.body.touching.down && this.player.anims.currentAnim?.key !== 'jump') {
+      this.player.anims.play('jump', true);
     }
 
     // Check for door collision
@@ -194,10 +281,6 @@ class GameScene extends Phaser.Scene {
       this.mobileControls.left = false;
       this.leftButton.setFillStyle(0x444444, 0.7);
     });
-    this.leftButton.on('pointerout', () => {
-      this.mobileControls.left = false;
-      this.leftButton.setFillStyle(0x444444, 0.7);
-    });
 
     // Right button
     this.rightButton = this.add.rectangle(240, buttonY, buttonSize, buttonSize, 0x444444, 0.7);
@@ -220,10 +303,6 @@ class GameScene extends Phaser.Scene {
       this.mobileControls.right = false;
       this.rightButton.setFillStyle(0x444444, 0.7);
     });
-    this.rightButton.on('pointerout', () => {
-      this.mobileControls.right = false;
-      this.rightButton.setFillStyle(0x444444, 0.7);
-    });
 
     // Jump button
     this.jumpButton = this.add.rectangle(700, buttonY, buttonSize, buttonSize, 0x444444, 0.7);
@@ -243,10 +322,6 @@ class GameScene extends Phaser.Scene {
       this.jumpButton.setFillStyle(0x666666, 0.9);
     });
     this.jumpButton.on('pointerup', () => {
-      this.mobileControls.jump = false;
-      this.jumpButton.setFillStyle(0x444444, 0.7);
-    });
-    this.jumpButton.on('pointerout', () => {
       this.mobileControls.jump = false;
       this.jumpButton.setFillStyle(0x444444, 0.7);
     });
