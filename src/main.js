@@ -20,7 +20,7 @@ class GameScene extends Phaser.Scene {
     );
 
     // Add instructional text
-    this.text = this.add.text(10, 10, 'Use arrow keys to move', {
+    this.text = this.add.text(10, 10, 'Use arrow keys or touch to move', {
       fontSize: '16px',
       fill: '#ffffff'
     });
@@ -34,6 +34,38 @@ class GameScene extends Phaser.Scene {
     });
 
     this.speed = 5;
+
+    // Enable touch/pointer input for mobile
+  update() {
+    // Handle continuous key input for smooth movement
+    if (this.keys.right.isDown) {
+      this.sprite.x += this.speed;
+    }
+    if (this.keys.left.isDown) {
+      this.sprite.x -= this.speed;
+    }
+    if (this.keys.up.isDown) {
+      this.sprite.y -= this.speed;
+    }
+    if (this.keys.down.isDown) {
+      this.sprite.y += this.speed;
+    }
+
+    // Handle touch/pointer movement
+    if (this.isMoving) {
+      const dx = this.targetX - this.sprite.x;
+      const dy = this.targetY - this.sprite.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance > 5) {
+        this.sprite.x += (dx / distance) * this.speed;
+        this.sprite.y += (dy / distance) * this.speed;
+      }
+    }
+  }   this.isMoving = false;
+    });
+
+    this.isMoving = false;
   }
 
   update() {
