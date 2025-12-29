@@ -23,12 +23,12 @@ export class FirstLevel extends LevelBuilder {
     levelGeometry.platforms = [  
       { x: 350, y: 2100, width: 500 },
       //Difficult jumps
-      { x: 500, y: 1900, width: 70 },
+      { x: 550, y: 1900, width: 70 },
       { x: 500, y: 1700, width: 70 },
-      { x: 500, y: 1500, width: 70 },
+      { x: 550, y: 1500, width: 70 },
 
       //Large jump to this platform
-      { x: 0, y: 1500, width: 300 },
+      { x: 100, y: 1500, width: 300 },
 
       //Stairway with gaps
       { x: 0, y: 1300, width: 100 },
@@ -67,7 +67,7 @@ export class FirstLevel extends LevelBuilder {
 
     // Set player start position (on the ground initially)
     levelGeometry.startX = 50;
-    levelGeometry.startY = 2200;
+    levelGeometry.startY = 2000;
 
     // Set door position
     levelGeometry.doorX = 3000;
