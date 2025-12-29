@@ -33,7 +33,6 @@ class GameScene extends Phaser.Scene {
 
     // Create player character (alien sprite)
     this.player = this.physics.add.sprite(100, 440, 'alienStand');
-    this.player.setCollideWorldBounds(true);
     this.player.body.setGravityY(800);
     this.player.setScale(0.8); // Adjust size if needed
 
@@ -63,17 +62,29 @@ class GameScene extends Phaser.Scene {
     // Add collision between player and platforms
     this.physics.add.collider(this.player, this.platforms);
 
+    // Expand world bounds to allow camera scrolling
+    const worldWidth = 1600;
+    const worldHeight = 1200;
+    this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
+    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+    
+    // Setup camera to follow player smoothly
+    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    this.cameras.main.setDeadzone(100, 100);
+
     // Add level counter and instructional text
     if (this.isMobile) {
       this.text = this.add.text(10, 10, `Level ${this.currentLevel}\nUse buttons to play`, {
         fontSize: '24px',
         fill: '#ffffff'
       });
+      this.text.setScrollFactor(0); // Keep text fixed to camera
     } else {
       this.text = this.add.text(10, 10, `Level ${this.currentLevel}\nArrow keys to move, Space to jump`, {
         fontSize: '24px',
         fill: '#ffffff'
       });
+      this.text.setScrollFactor(0); // Keep text fixed to camera
     }
 
     // Setup keyboard controls
