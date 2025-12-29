@@ -262,6 +262,14 @@ class GameScene extends Phaser.Scene {
       this.mobileControls.left = false;
       this.leftButton.setFillStyle(0x444444, 0.7);
     });
+    this.leftButton.on('pointerout', () => {
+      this.mobileControls.left = false;
+      this.leftButton.setFillStyle(0x444444, 0.7);
+    });
+    this.leftButton.on('pointerupoutside', () => {
+      this.mobileControls.left = false;
+      this.leftButton.setFillStyle(0x444444, 0.7);
+    });
 
     // Right button (lower left corner, next to left button)
     const rightButtonX = leftButtonX + buttonSize + 20;
@@ -285,6 +293,14 @@ class GameScene extends Phaser.Scene {
       this.mobileControls.right = false;
       this.rightButton.setFillStyle(0x444444, 0.7);
     });
+    this.rightButton.on('pointerout', () => {
+      this.mobileControls.right = false;
+      this.rightButton.setFillStyle(0x444444, 0.7);
+    });
+    this.rightButton.on('pointerupoutside', () => {
+      this.mobileControls.right = false;
+      this.rightButton.setFillStyle(0x444444, 0.7);
+    });
 
     // Jump button (lower right corner)
     const jumpButtonX = gameWidth - buttonMargin - buttonSize / 2;
@@ -305,6 +321,14 @@ class GameScene extends Phaser.Scene {
       this.jumpButton.setFillStyle(0x666666, 0.9);
     });
     this.jumpButton.on('pointerup', () => {
+      this.mobileControls.jump = false;
+      this.jumpButton.setFillStyle(0x444444, 0.7);
+    });
+    this.jumpButton.on('pointerout', () => {
+      this.mobileControls.jump = false;
+      this.jumpButton.setFillStyle(0x444444, 0.7);
+    });
+    this.jumpButton.on('pointerupoutside', () => {
       this.mobileControls.jump = false;
       this.jumpButton.setFillStyle(0x444444, 0.7);
     });
