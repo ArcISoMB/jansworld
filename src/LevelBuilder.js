@@ -52,9 +52,30 @@ export class LevelBuilder {
       fill: '#ffffff'
     }).setOrigin(0.5);
 
+    // Create teleporters if defined
+    const teleporters = [];
+    if (levelGeometry.teleporters && levelGeometry.teleporters.length > 0) {
+      levelGeometry.teleporters.forEach(teleporterPos => {
+        const teleporter = this.scene.physics.add.sprite(teleporterPos.x, teleporterPos.y, 'teleporter');
+        teleporter.body.setAllowGravity(false);
+        teleporter.body.setImmovable(true);
+        teleporter.teleporterType = teleporterPos.type || 'from'; // Store type on the sprite
+        teleporters.push(teleporter);
+        
+        // Add label based on type
+        const label = teleporterPos.type === 'to' ? 'TO' : 'FROM';
+        const color = teleporterPos.type === 'to' ? '#00ff00' : '#ff8800';
+        this.scene.add.text(teleporterPos.x, teleporterPos.y - 30, label, {
+          fontSize: '12px',
+          fill: color
+        }).setOrigin(0.5);
+      });
+    }
+
     return {
       platforms: platforms,
-      door: doorTop
+      door: doorTop,
+      teleporters: teleporters
     };
   }
 

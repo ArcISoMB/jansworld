@@ -21,6 +21,9 @@ class GameScene extends Phaser.Scene {
     this.load.image('floor', 'sprites/Base pack/Tiles/grassMid.png');
     this.load.image('doorClosed', 'sprites/Base pack/Tiles/door_closedMid.png');
     this.load.image('doorTop', 'sprites/Base pack/Tiles/door_closedTop.png');
+    
+    // Load teleporter sprites
+    this.load.image('teleporter', 'sprites/Base pack/Items/switchMid.png');
   }
 
   create() {
@@ -45,6 +48,7 @@ class GameScene extends Phaser.Scene {
     const levelObjects = this.levelBuilder.build(this.levelGeometry);
     this.platforms = levelObjects.platforms;
     this.door = levelObjects.door;
+    this.teleporters = levelObjects.teleporters || [];
 
     // Create player character (alien sprite)
     const startPos = this.levelGeometry.getPlayerStartPosition();
@@ -90,13 +94,13 @@ class GameScene extends Phaser.Scene {
 
     // Add level counter and instructional text
     if (this.isMobile) {
-      this.text = this.add.text(10, 10, `Level ${this.currentLevel}\nUse buttons to play`, {
+      this.text = this.add.text(10, 10, `Level ${this.currentLevel}\nGebruik de knoppen om te spelen`, {
         fontSize: '24px',
         fill: '#ffffff'
       });
       this.text.setScrollFactor(0); // Keep text fixed to camera
     } else {
-      this.text = this.add.text(10, 10, `Level ${this.currentLevel}\nArrow keys to move, Space to jump`, {
+      this.text = this.add.text(10, 10, `Level ${this.currentLevel}\nPijltjes om te bewegen, Spatie om te springen`, {
         fontSize: '24px',
         fill: '#ffffff'
       });
@@ -132,13 +136,19 @@ class GameScene extends Phaser.Scene {
     if (this.door) {
       this.door.destroy();
     }
+    if (this.teleporters) {
+      this.teleporters.forEach(t => t.destroy());
+      this.teleporters = [];
+    }
     
-    // Regenerate level
+    // Regenerate level - use RandomLevelBuilder for level 2+
     this.levelGeometry = new LevelGeometry();
-    this.levelGeometry.generate();
+    this.levelBuilder = new RandomLevelBuilder(this);
+    this.levelBuilder.generateGeometry(this.levelGeometry);
     const levelObjects = this.levelBuilder.build(this.levelGeometry);
     this.platforms = levelObjects.platforms;
     this.door = levelObjects.door;
+    this.teleporters = levelObjects.teleporters || [];
     
     // Reset player position
     const startPos = this.levelGeometry.getPlayerStartPosition();
@@ -194,6 +204,22 @@ class GameScene extends Phaser.Scene {
     // Check for door collision
     if (this.door && this.physics.overlap(this.player, this.door)) {
       this.nextLevel();
+    }
+
+    // Check for teleporter collision - one-way only from 'from' to 'to'
+    if (this.teleporters && this.teleporters.length >= 2) {
+      const fromTeleporter = this.teleporters.find(t => t.teleporterType === 'from');
+      const toTeleporter = this.teleporters.find(t => t.teleporterType === 'to');
+      
+      if (fromTeleporter && toTeleporter && this.physics.overlap(this.player, fromTeleporter)) {
+        if (!this.teleportCooldown) {
+          this.player.x = toTeleporter.x;
+          this.player.y = toTeleporter.y - 50;
+          this.player.body.setVelocity(0, 0);
+          this.teleportCooldown = true;
+          this.time.delayedCall(1000, () => { this.teleportCooldown = false; });
+        }
+      }
     }
 
     // Keep player within horizontal world bounds
@@ -281,8 +307,8 @@ class GameScene extends Phaser.Scene {
 
 const config = {
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
+  width: window.innerWidth * 2.5,
+  height: window.innerHeight * 2.5,
   backgroundColor: '#222222',
   scene: GameScene,
   physics: {
@@ -295,8 +321,8 @@ const config = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: 800,
-    height: 600
+    width: window.innerWidth * 2.5,
+    height: window.innerHeight * 2.5
   },
   input: {
     activePointers: 3 // Enable up to 3 simultaneous touch points

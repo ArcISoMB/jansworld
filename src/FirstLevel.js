@@ -20,27 +20,64 @@ export class FirstLevel extends LevelBuilder {
 
     // Hard-coded platforms for first level
     // Create a simple, learnable path to the exit
-    levelGeometry.platforms = [
-      // Starting platform
-      { x: 300, y: 300, width: 500 },
+    levelGeometry.platforms = [  
+      { x: 350, y: 2100, width: 500 },
+      //Difficult jumps
+      { x: 500, y: 1900, width: 70 },
+      { x: 500, y: 1700, width: 70 },
+      { x: 500, y: 1500, width: 70 },
+
+      //Large jump to this platform
+      { x: 0, y: 1500, width: 300 },
+
+      //Stairway with gaps
+      { x: 0, y: 1300, width: 100 },
+      { x: 200, y: 1100, width: 100 },
+      { x: 400, y: 990, width: 100 },
+      { x: 600, y: 880, width: 100 },
+      { x: 800, y: 770, width: 100 },
+      { x: 1000, y: 660, width: 100 },
+      { x: 1200, y: 550, width: 100 },
+      { x: 1400, y: 440, width: 100 },
+
+      //Fall into the unknown here.
+      { x: 2000, y: 1400, width: 500 },
+      { x: 2100, y: 1300, width: 200 },
+      { x: 2240, y: 1200, width: 200 },
+      { x: 2380, y: 1100, width: 200 },
+      { x: 2520, y: 1000, width: 200 },
+      { x: 2660, y: 900, width: 200 },
+      { x: 2800, y: 800, width: 200 },
+      { x: 2920, y: 700, width: 100 },
+
+      { x: 2950, y: 1000, width: 100 },
       
-      // Jump to middle platform
-      { x: 500, y: 0, width: 120 },
-      
-      // Higher platform
-      { x: 650, y: 240, width: 100 },
-      
-      // Platform near door
-      { x: 715, y: 120, width: 140 }
+      //Platform with teleporter
+      { x: 2920, y: 1300, width: 100 },
+
+      //Staiway to heaven
+      { x: 1900, y: 400, width: 200 }, //Teleports to here
+      { x: 2140, y: 350, width: 200 },
+      { x: 2280, y: 300, width: 200 },
+      { x: 2420, y: 250, width: 200 },
+      { x: 2560, y: 200, width: 200 },
+      { x: 2700, y: 150, width: 200 },
+      { x: 2800, y: 100, width: 200 },
     ];
 
     // Set player start position (on the ground initially)
-    levelGeometry.startX = 100;
-    levelGeometry.startY = 2300;
+    levelGeometry.startX = 50;
+    levelGeometry.startY = 2200;
 
     // Set door position
-    levelGeometry.doorX = 730;
+    levelGeometry.doorX = 3000;
     levelGeometry.doorY = 50;
     levelGeometry.doorPlatformY = 120;
+
+    // Teleporter positions - one-way teleportation
+    levelGeometry.teleporters = [
+      { x: 2920, y: 1260, type: 'from' }, // From: On platform at y: 1300
+      { x: 1900, y: 360, type: 'to' }     // To: On platform at y: 400
+    ];
   }
 }
