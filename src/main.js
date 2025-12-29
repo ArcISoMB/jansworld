@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { LevelGeometry } from './LevelGeometry.js';
+import { RandomLevelBuilder } from './RandomLevelBuilder.js';
 
 class GameScene extends Phaser.Scene {
   constructor() {
@@ -29,10 +31,16 @@ class GameScene extends Phaser.Scene {
                     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     // Generate level
-    this.generateLevel();
+    this.levelGeometry = new LevelGeometry();
+    this.levelGeometry.generate();
+    this.levelBuilder = new RandomLevelBuilder(this);
+    const levelObjects = this.levelBuilder.build(this.levelGeometry);
+    this.platforms = levelObjects.platforms;
+    this.door = levelObjects.door;
 
     // Create player character (alien sprite)
-    this.player = this.physics.add.sprite(100, 440, 'alienStand');
+    const startPos = this.levelGeometry.getPlayerStartPosition();
+    this.player = this.physics.add.sprite(startPos.x, startPos.y, 'alienStand');
     this.player.body.setGravityY(800);
     this.player.setScale(0.8); // Adjust size if needed
 
@@ -63,8 +71,8 @@ class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.platforms);
 
     // Expand world bounds to allow camera scrolling
-    const worldWidth = 1600;
-    const worldHeight = 1200;
+    const worldWidth = 3200;
+    const worldHeight = 2400;
     this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
     
@@ -106,127 +114,6 @@ class GameScene extends Phaser.Scene {
     }
   }
 
-  generateLevel() {
-    // Create platforms group (static physics bodies)
-    this.platforms = this.physics.add.staticGroup();
-
-    // Create floor - use multiple tiles
-    const floorY = 520;
-    const tileWidth = 70; // Approximate width of grass tile
-    for (let x = 0; x < 800; x += tileWidth) {
-      const tile = this.platforms.create(x + tileWidth/2, floorY, 'floor');
-      tile.setScale(1).refreshBody();
-    }
-
-    // Generate random platforms that create a path to the door
-    // Door is in upper right corner at approximately (730, 50)
-    const doorX = 730;
-    const doorY = 50;
-
-    // Create a guaranteed path of platforms from start to door
-    // Each platform must be within jumping distance (horizontally and vertically)
-    const maxJumpDistanceX = 200; // Maximum horizontal jump distance
-    const maxJumpDistanceY = 150; // Maximum vertical jump distance (up)
-    const maxFallDistance = 300; // Can fall down any distance
-    const minVerticalGap = 100; // Minimum vertical gap to prevent getting stuck
-    const minHorizontalGap = 120; // Minimum horizontal gap between platforms
-    
-    const numPlatforms = 5 + Math.floor(Math.random() * 2); // 5-6 platforms
-    const platforms = [];
-    
-    // Starting position (player starts at x=100, on floor at y=520)
-    let currentX = 100;
-    let currentY = floorY;
-    
-    // Target is the door area
-    const targetX = doorX - 50; // Platform should be slightly left of door
-    const targetY = 120; // Final platform height
-    const doorPlatformY = 120; // Y position of platform beneath the door
-    
-    for (let i = 0; i < numPlatforms; i++) {
-      // Calculate progress towards target (0 to 1)
-      const progress = (i + 1) / numPlatforms;
-      
-      // Move towards target, ensuring each step is reachable
-      const nextX = currentX + (targetX - currentX) * (1 / (numPlatforms - i)) + (Math.random() - 0.5) * 60;
-      const nextY = currentY - (currentY - targetY) * (1 / (numPlatforms - i)) + (Math.random() - 0.5) * 40;
-      
-      // Clamp to ensure reachability
-      const clampedX = Math.max(currentX - maxJumpDistanceX, Math.min(currentX + maxJumpDistanceX, nextX));
-      const clampedY = Math.max(targetY, Math.min(currentY + maxFallDistance, nextY));
-      
-      // Ensure Y goes upward mostly (can't jump too high in one step)
-      let finalY = Math.max(clampedY, currentY - maxJumpDistanceY);
-      
-      // CRITICAL: Never place platforms higher than the door platform (would block the door)
-      if (finalY < doorPlatformY) {
-        finalY = doorPlatformY;
-      }
-      
-      // IMPORTANT: Ensure minimum vertical gap to prevent getting stuck
-      // If platform is too close vertically, push it further away
-      if (Math.abs(finalY - currentY) < minVerticalGap && finalY < currentY) {
-        finalY = currentY - minVerticalGap;
-        // Re-check door platform constraint
-        if (finalY < doorPlatformY) {
-          finalY = doorPlatformY;
-        }
-      }
-      
-      // Ensure minimum horizontal gap between platforms (or make them overlap/far apart)
-      let finalX = clampedX;
-      const horizontalDistance = Math.abs(finalX - currentX);
-      if (horizontalDistance < minHorizontalGap && horizontalDistance > 10) {
-        // Either push it further away or move it closer (to overlap/be far)
-        if (finalX > currentX) {
-          finalX = currentX + minHorizontalGap;
-        } else {
-          finalX = currentX - minHorizontalGap;
-        }
-      }
-      
-      platforms.push({ x: finalX, y: finalY });
-      currentX = finalX;
-      currentY = finalY;
-    }
-    
-    // Create platform tiles for each platform in the path
-    platforms.forEach(platform => {
-      const width = 100 + Math.random() * 80; // 100-180 width
-      const numTiles = Math.floor(width / 70);
-      
-      for (let t = 0; t < numTiles; t++) {
-        const tileX = platform.x - (numTiles * 35) + (t * 70) + 35;
-        const tile = this.platforms.create(tileX, platform.y, 'platform');
-        tile.setScale(1).refreshBody();
-      }
-    });
-
-    // Add a final platform directly below/near the door to ensure it's reachable
-    for (let t = 0; t < 2; t++) {
-      const tile = this.platforms.create(680 + (t * 70), 120, 'platform');
-      tile.setScale(1).refreshBody();
-    }
-
-    // Refresh the static group
-    this.platforms.refresh();
-
-    // Create the door in upper right corner
-    this.door = this.physics.add.sprite(doorX, doorY - 35, 'doorTop');
-    this.door.body.setAllowGravity(false);
-    this.door.body.setImmovable(true);
-    
-    const doorBottom = this.physics.add.sprite(doorX, doorY, 'doorClosed');
-    doorBottom.body.setAllowGravity(false);
-    doorBottom.body.setImmovable(true);
-
-    // Add door label
-    this.add.text(doorX, doorY + 50, 'EXIT', {
-      fontSize: '16px',
-      fill: '#ffffff'
-    }).setOrigin(0.5);
-  }
-
   nextLevel() {
     this.currentLevel++;
     
@@ -239,11 +126,16 @@ class GameScene extends Phaser.Scene {
     }
     
     // Regenerate level
-    this.generateLevel();
+    this.levelGeometry = new LevelGeometry();
+    this.levelGeometry.generate();
+    const levelObjects = this.levelBuilder.build(this.levelGeometry);
+    this.platforms = levelObjects.platforms;
+    this.door = levelObjects.door;
     
     // Reset player position
-    this.player.x = 100;
-    this.player.y = 440;
+    const startPos = this.levelGeometry.getPlayerStartPosition();
+    this.player.x = startPos.x;
+    this.player.y = startPos.y;
     this.player.body.setVelocity(0, 0);
     
     // Update text
@@ -294,6 +186,16 @@ class GameScene extends Phaser.Scene {
     // Check for door collision
     if (this.door && this.physics.overlap(this.player, this.door)) {
       this.nextLevel();
+    }
+
+    // Keep player within horizontal world bounds
+    const worldWidth = 3200;
+    if (this.player.x < 0) {
+      this.player.x = 0;
+      this.player.body.setVelocityX(0);
+    } else if (this.player.x > worldWidth) {
+      this.player.x = worldWidth;
+      this.player.body.setVelocityX(0);
     }
   }
 
