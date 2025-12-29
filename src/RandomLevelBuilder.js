@@ -1,52 +1,76 @@
-export class RandomLevelBuilder {
-  constructor(scene) {
-    this.scene = scene;
-  }
+import { LevelBuilder } from './LevelBuilder.js';
 
-  build(levelGeometry) {
-    // Create platforms group (static physics bodies)
-    const platforms = this.scene.physics.add.staticGroup();
+/**
+ * Random level builder that generates procedural levels
+ */
+export class RandomLevelBuilder extends LevelBuilder {
+  /**
+   * Generates random level geometry
+   * @param {LevelGeometry} levelGeometry - The level geometry object to populate
+   */
+  generateGeometry(levelGeometry) {
+    // Generate floor tiles - span the entire world width
+    levelGeometry.floorTiles = [];
+    for (let x = 0; x < levelGeometry.worldWidth; x += levelGeometry.tileWidth) {
+      levelGeometry.floorTiles.push({
+        x: x + levelGeometry.tileWidth / 2,
+        y: levelGeometry.floorY
+      });
+    }
 
-    // Create floor tiles
-    const floorTiles = levelGeometry.getFloorTiles();
-    floorTiles.forEach(tile => {
-      const floorTile = platforms.create(tile.x, tile.y, 'floor');
-      floorTile.setScale(1).refreshBody();
-    });
-
-    // Create platform tiles
-    const platformData = levelGeometry.getPlatforms();
-    platformData.forEach(platform => {
-      const numTiles = Math.floor(platform.width / 70);
-      for (let t = 0; t < numTiles; t++) {
-        const tileX = platform.x - (numTiles * 35) + (t * 70) + 35;
-        const tile = platforms.create(tileX, platform.y, 'platform');
-        tile.setScale(1).refreshBody();
-      }
-    });
-
-    // Refresh the static group
-    platforms.refresh();
-
-    // Create the door
-    const doorPos = levelGeometry.getDoorPosition();
-    const doorTop = this.scene.physics.add.sprite(doorPos.x, doorPos.y - 35, 'doorTop');
-    doorTop.body.setAllowGravity(false);
-    doorTop.body.setImmovable(true);
+    // Platform generation parameters
+    const maxJumpDistanceX = 200;
+    const maxJumpDistanceY = 150;
+    const maxFallDistance = 300;
+    const minVerticalGap = 100;
+    const minHorizontalGap = 120;
     
-    const doorBottom = this.scene.physics.add.sprite(doorPos.x, doorPos.y, 'doorClosed');
-    doorBottom.body.setAllowGravity(false);
-    doorBottom.body.setImmovable(true);
-
-    // Add door label
-    this.scene.add.text(doorPos.x, doorPos.y + 50, 'EXIT', {
-      fontSize: '16px',
-      fill: '#ffffff'
-    }).setOrigin(0.5);
-
-    return {
-      platforms: platforms,
-      door: doorTop
-    };
+    const numPlatforms = 5 + Math.floor(Math.random() * 2);
+    levelGeometry.platforms = [];
+    
+    let currentX = levelGeometry.startX;
+    let currentY = levelGeometry.floorY;
+    
+    const targetX = levelGeometry.doorX - 50;
+    const targetY = levelGeometry.doorPlatformY;
+    
+    for (let i = 0; i < numPlatforms; i++) {
+      const nextX = currentX + (targetX - currentX) * (1 / (numPlatforms - i)) + (Math.random() - 0.5) * 60;
+      const nextY = currentY - (currentY - targetY) * (1 / (numPlatforms - i)) + (Math.random() - 0.5) * 40;
+      
+      const clampedX = Math.max(currentX - maxJumpDistanceX, Math.min(currentX + maxJumpDistanceX, nextX));
+      const clampedY = Math.max(targetY, Math.min(currentY + maxFallDistance, nextY));
+      
+      let finalY = Math.max(clampedY, currentY - maxJumpDistanceY);
+      
+      if (finalY < levelGeometry.doorPlatformY) {
+        finalY = levelGeometry.doorPlatformY;
+      }
+      
+      if (Math.abs(finalY - currentY) < minVerticalGap && finalY < currentY) {
+        finalY = currentY - minVerticalGap;
+        if (finalY < levelGeometry.doorPlatformY) {
+          finalY = levelGeometry.doorPlatformY;
+        }
+      }
+      
+      let finalX = clampedX;
+      const horizontalDistance = Math.abs(finalX - currentX);
+      if (horizontalDistance < minHorizontalGap && horizontalDistance > 10) {
+        if (finalX > currentX) {
+          finalX = currentX + minHorizontalGap;
+        } else {
+          finalX = currentX - minHorizontalGap;
+        }
+      }
+      
+      const width = 100 + Math.random() * 80;
+      levelGeometry.platforms.push({ x: finalX, y: finalY, width: width });
+      currentX = finalX;
+      currentY = finalY;
+    }
+    
+    // Add final platform near door
+    levelGeometry.platforms.push({ x: 715, y: 120, width: 140 });
   }
 }

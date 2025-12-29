@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { LevelGeometry } from './LevelGeometry.js';
+import { FirstLevel } from './FirstLevel.js';
 import { RandomLevelBuilder } from './RandomLevelBuilder.js';
 
 class GameScene extends Phaser.Scene {
@@ -32,8 +33,15 @@ class GameScene extends Phaser.Scene {
 
     // Generate level
     this.levelGeometry = new LevelGeometry();
-    this.levelGeometry.generate();
-    this.levelBuilder = new RandomLevelBuilder(this);
+    
+    // Use FirstLevel for level 1, RandomLevelBuilder for subsequent levels
+    if (this.currentLevel === 1) {
+      this.levelBuilder = new FirstLevel(this);
+    } else {
+      this.levelBuilder = new RandomLevelBuilder(this);
+    }
+    
+    this.levelBuilder.generateGeometry(this.levelGeometry);
     const levelObjects = this.levelBuilder.build(this.levelGeometry);
     this.platforms = levelObjects.platforms;
     this.door = levelObjects.door;
