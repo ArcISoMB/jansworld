@@ -100,7 +100,7 @@ class GameScene extends Phaser.Scene {
       });
       this.text.setScrollFactor(0); // Keep text fixed to camera
     } else {
-      this.text = this.add.text(10, 10, `Level ${this.currentLevel}\nPijltjes om te bewegen, Spatie om te springen`, {
+      this.text = this.add.text(10, 10, `Level ${this.currentLevel}\nPijltjestoetsen om te bewegen, Spatiebalk om te springen`, {
         fontSize: '24px',
         fill: '#ffffff'
       });
@@ -234,16 +234,20 @@ class GameScene extends Phaser.Scene {
   }
 
   createMobileButtons() {
-    const buttonY = 560;
     const buttonSize = 120;
+    const buttonMargin = 30;
+    const gameHeight = this.scale.height;
+    const gameWidth = this.scale.width;
+    const buttonY = gameHeight - buttonMargin - buttonSize / 2;
     
-    // Left button
-    this.leftButton = this.add.rectangle(100, buttonY, buttonSize, buttonSize, 0x444444, 0.7);
+    // Left button (lower left corner)
+    const leftButtonX = buttonMargin + buttonSize / 2;
+    this.leftButton = this.add.rectangle(leftButtonX, buttonY, buttonSize, buttonSize, 0x444444, 0.7);
     this.leftButton.setScrollFactor(0);
     this.leftButton.setInteractive();
     this.leftButton.setDepth(100);
     
-    const leftText = this.add.text(100, buttonY, '←', {
+    const leftText = this.add.text(leftButtonX, buttonY, '←', {
       fontSize: '64px',
       fill: '#ffffff'
     }).setOrigin(0.5);
@@ -259,13 +263,14 @@ class GameScene extends Phaser.Scene {
       this.leftButton.setFillStyle(0x444444, 0.7);
     });
 
-    // Right button
-    this.rightButton = this.add.rectangle(240, buttonY, buttonSize, buttonSize, 0x444444, 0.7);
+    // Right button (lower left corner, next to left button)
+    const rightButtonX = leftButtonX + buttonSize + 20;
+    this.rightButton = this.add.rectangle(rightButtonX, buttonY, buttonSize, buttonSize, 0x444444, 0.7);
     this.rightButton.setScrollFactor(0);
     this.rightButton.setInteractive();
     this.rightButton.setDepth(100);
     
-    const rightText = this.add.text(240, buttonY, '→', {
+    const rightText = this.add.text(rightButtonX, buttonY, '→', {
       fontSize: '64px',
       fill: '#ffffff'
     }).setOrigin(0.5);
@@ -281,13 +286,14 @@ class GameScene extends Phaser.Scene {
       this.rightButton.setFillStyle(0x444444, 0.7);
     });
 
-    // Jump button
-    this.jumpButton = this.add.rectangle(700, buttonY, buttonSize, buttonSize, 0x444444, 0.7);
+    // Jump button (lower right corner)
+    const jumpButtonX = gameWidth - buttonMargin - buttonSize / 2;
+    this.jumpButton = this.add.rectangle(jumpButtonX, buttonY, buttonSize, buttonSize, 0x444444, 0.7);
     this.jumpButton.setScrollFactor(0);
     this.jumpButton.setInteractive();
     this.jumpButton.setDepth(100);
     
-    const jumpText = this.add.text(700, buttonY, '↑', {
+    const jumpText = this.add.text(jumpButtonX, buttonY, '↑', {
       fontSize: '64px',
       fill: '#ffffff'
     }).setOrigin(0.5);
@@ -307,8 +313,6 @@ class GameScene extends Phaser.Scene {
 
 const config = {
   type: Phaser.AUTO,
-  width: window.innerWidth * 2.5,
-  height: window.innerHeight * 2.5,
   backgroundColor: '#222222',
   scene: GameScene,
   physics: {
@@ -321,8 +325,8 @@ const config = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: window.innerWidth * 2.5,
-    height: window.innerHeight * 2.5
+    width: 1600,
+    height: 800
   },
   input: {
     activePointers: 3 // Enable up to 3 simultaneous touch points
