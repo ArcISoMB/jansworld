@@ -84,7 +84,7 @@ export class FirstLevel extends LevelBuilder {
     levelGeometry.challengeDoors = [
       {
         x: 500,
-        y: 2050,  // Op platform op y: 2100
+        y: 2000,  // Op platform op y: 2100
         challengeType: 'quiz',
         challengeData: {
           questions: [
@@ -101,12 +101,6 @@ export class FirstLevel extends LevelBuilder {
               question: 'Hoeveel is 7 × 8?',
               answer: 56
             },
-            // Klok vraag
-            {
-              type: 'clock',
-              hours: 10,
-              minutes: 30
-            },
             // Spelling vraag
             {
               type: 'spelling',
@@ -120,6 +114,41 @@ export class FirstLevel extends LevelBuilder {
               question: 'Hoeveel poten heeft een spin?',
               options: ['4', '6', '8', '10'],
               correctIndex: 2
+            }
+          ]
+        }
+      },
+      {
+        x: 2800,
+        y: 0,
+        challengeType: 'quiz',
+        challengeData: {
+          questions: [
+            // Multiple choice vraag
+            {
+              type: 'multipleChoice',
+              question: 'Kan je vuur onder water maken?',
+              options: ['Ja', 'Nee'],
+              correctIndex: 0
+            },
+            // Rekenvraag
+            {
+              type: 'calculation',
+              question: 'Hoeveel is 7 X 11 - 10?',
+              answer: 67
+            },
+            // Rekenvraag
+            {
+              type: 'calculation',
+              question: 'Hoeveel is 56079 X 87785 x 0?',
+              answer: 0
+            },
+            // Nog een multiple choice
+            {
+              type: 'multipleChoice',
+              question: 'Wat doet de spreuk Wingardium Leviosa?',
+              options: ['Dood mensen', 'Laat dingen zweven', 'Maakt dingen onzichtbaar', 'Ontwapent mensen'],
+              correctIndex: 1
             }
           ]
         }

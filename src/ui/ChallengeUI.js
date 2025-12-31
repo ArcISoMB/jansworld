@@ -276,25 +276,43 @@ export class ChallengeUI {
 
     // Urenwijzer
     const hourAngle = ((hours % 12) * 30 + minutes * 0.5 - 90) * Math.PI / 180;
+    const hourHandLength = radius * 0.5;
     const hourHand = this.scene.add.line(
       centerX, centerY,
       0, 0,
-      Math.cos(hourAngle) * (radius * 0.5),
-      Math.sin(hourAngle) * (radius * 0.5),
+      Math.cos(hourAngle) * hourHandLength,
+      Math.sin(hourAngle) * hourHandLength,
       0x333333
     ).setLineWidth(4).setScrollFactor(0).setDepth(504);
     this.elements.push(hourHand);
+    
+    // Bolletje aan het einde van de urenwijzer
+    const hourTip = this.scene.add.circle(
+      centerX + Math.cos(hourAngle) * hourHandLength,
+      centerY + Math.sin(hourAngle) * hourHandLength,
+      6, 0x333333, 1
+    ).setScrollFactor(0).setDepth(504);
+    this.elements.push(hourTip);
 
     // Minutenwijzer
     const minuteAngle = (minutes * 6 - 90) * Math.PI / 180;
+    const minuteHandLength = radius * 0.75;
     const minuteHand = this.scene.add.line(
       centerX, centerY,
       0, 0,
-      Math.cos(minuteAngle) * (radius * 0.75),
-      Math.sin(minuteAngle) * (radius * 0.75),
+      Math.cos(minuteAngle) * minuteHandLength,
+      Math.sin(minuteAngle) * minuteHandLength,
       0x333333
     ).setLineWidth(2).setScrollFactor(0).setDepth(504);
     this.elements.push(minuteHand);
+    
+    // Bolletje aan het einde van de minutenwijzer
+    const minuteTip = this.scene.add.circle(
+      centerX + Math.cos(minuteAngle) * minuteHandLength,
+      centerY + Math.sin(minuteAngle) * minuteHandLength,
+      4, 0x333333, 1
+    ).setScrollFactor(0).setDepth(504);
+    this.elements.push(minuteTip);
 
     // Centrum punt
     const centerDot = this.scene.add.circle(centerX, centerY, 5, 0x333333, 1)
