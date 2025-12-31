@@ -8,6 +8,7 @@ export class Challenge {
     this.isActive = false;
     this.isCompleted = false;
     this.savedPlayerState = null;
+    this.onCompleteCallback = null;  // Callback voor wanneer challenge voltooid wordt
   }
 
   /**
@@ -52,6 +53,12 @@ export class Challenge {
     this.isCompleted = true;
     this.scene.challengeActive = false;
     this.restorePlayer();
+    
+    // Roep callback aan voor de deur om visuals te updaten
+    if (this.onCompleteCallback) {
+      this.onCompleteCallback();
+    }
+    
     this.onComplete();
   }
 

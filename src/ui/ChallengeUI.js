@@ -72,11 +72,21 @@ export class ChallengeUI {
 
     const centerX = this.scene.cameras.main.centerX;
     const centerY = this.scene.cameras.main.centerY;
+    
+    // Layout configuratie - alle posities relatief aan elkaar
+    const layout = {
+      topY: centerY - 210,           // Vraagnummer
+      spacing: 20,                    // Ruimte tussen elementen
+      inputHeight: 50,                // Hoogte van input element
+      buttonHeight: 50,               // Hoogte van buttons
+      submitButtonHeight: 45          // Hoogte van submit knop
+    };
 
-    // Vraagnummer
+    // Vraagnummer (bovenaan)
+    let currentY = layout.topY;
     const progressText = this.scene.add.text(
       centerX,
-      centerY - 200,
+      currentY,
       `${prefix}Vraag ${questionNum} van ${totalQuestions}`,
       {
         fontSize: '24px',
@@ -84,22 +94,24 @@ export class ChallengeUI {
       }
     ).setOrigin(0.5).setScrollFactor(0).setDepth(502);
     this.elements.push(progressText);
+    currentY += 30 + layout.spacing;
 
     // Render extra data (klok of afbeelding)
     const renderData = question.getRenderData();
     if (renderData) {
       if (renderData.type === 'clock') {
-        this.renderClock(centerX, centerY - 100, renderData.hours, renderData.minutes);
+        this.renderClock(centerX, currentY + 60, renderData.hours, renderData.minutes);
+        currentY += 140 + layout.spacing;  // Klok is ~140px hoog
       } else if (renderData.type === 'image') {
-        this.renderImage(centerX, centerY - 100, renderData.image);
+        this.renderImage(centerX, currentY + 60, renderData.image);
+        currentY += 140 + layout.spacing;  // Afbeelding is ~140px hoog
       }
     }
 
-    // Vraag tekst - hoger als er extra content is
-    const promptY = renderData ? centerY + 30 : centerY - 100;
+    // Vraag tekst
     const promptText = this.scene.add.text(
       centerX,
-      promptY,
+      currentY,
       question.getPrompt(),
       {
         fontSize: '28px',
@@ -107,17 +119,20 @@ export class ChallengeUI {
         wordWrap: { width: 700 },
         align: 'center'
       }
-    ).setOrigin(0.5).setScrollFactor(0).setDepth(502);
+    ).setOrigin(0.5, 0).setScrollFactor(0).setDepth(502);
     this.elements.push(promptText);
+    
+    // Bereken hoogte van vraagtekst (geschatte hoogte op basis van tekst)
+    const promptHeight = promptText.height;
+    currentY += promptHeight + layout.spacing + 10;
 
-    // Input type - verder naar beneden als er extra content is
+    // Input type
     const inputType = question.getInputType();
-    const inputY = renderData ? centerY + 130 : centerY + 80;
     
     if (inputType === 'buttons') {
-      this.renderButtons(question.getOptions(), centerX, inputY);
+      this.renderButtons(question.getOptions(), centerX, currentY);
     } else {
-      this.renderTextInput(centerX, inputY, question.getPlaceholder ? question.getPlaceholder() : '');
+      this.renderTextInput(centerX, currentY, question.getPlaceholder ? question.getPlaceholder() : '');
     }
   }
 
@@ -155,20 +170,21 @@ export class ChallengeUI {
     });
   }
 
-  renderTextInput(centerX, centerY, placeholder) {
+  renderTextInput(centerX, startY, placeholder) {
     // Maak HTML input element voor tekst invoer
     const inputWidth = 300;
-    const inputHeight = 40;
-    const submitButtonY = centerY + 60;  // Submit knop onder het invoerveld
+    const inputHeight = 50;
+    const gap = 20;  // Ruimte tussen input en button
+    const submitButtonHeight = 45;
     
-    // Bereken screen positie
+    // Bereken screen positie voor het HTML input element
     const canvas = this.scene.game.canvas;
     const canvasRect = canvas.getBoundingClientRect();
     const scaleX = canvasRect.width / this.scene.cameras.main.width;
     const scaleY = canvasRect.height / this.scene.cameras.main.height;
     
     const screenX = canvasRect.left + centerX * scaleX;
-    const screenY = canvasRect.top + centerY * scaleY;
+    const screenY = canvasRect.top + startY * scaleY;
 
     // Maak input element
     this.inputElement = document.createElement('input');
@@ -177,7 +193,7 @@ export class ChallengeUI {
     this.inputElement.style.cssText = `
       position: absolute;
       left: ${screenX - (inputWidth * scaleX) / 2}px;
-      top: ${screenY - (inputHeight * scaleY) / 2}px;
+      top: ${screenY}px;
       width: ${inputWidth * scaleX}px;
       height: ${inputHeight * scaleY}px;
       font-size: ${20 * scaleY}px;
@@ -188,16 +204,19 @@ export class ChallengeUI {
       color: #ffffff;
       text-align: center;
       z-index: 1000;
+      box-sizing: border-box;
     `;
     document.body.appendChild(this.inputElement);
     this.inputElement.focus();
 
-    // Submit knop (onder het invoerveld)
+    // Submit knop positie is relatief aan input: input hoogte + gap
+    const submitButtonY = startY + inputHeight + gap + submitButtonHeight / 2;
+    
     const submitButton = this.scene.add.rectangle(
       centerX,
       submitButtonY,
       150,
-      45,
+      submitButtonHeight,
       0x44aa44,
       1
     ).setScrollFactor(0).setDepth(502).setInteractive({ useHandCursor: true });

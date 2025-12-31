@@ -18,6 +18,12 @@ export class ChallengeDoor {
     this.topSprite = null;
     this.label = null;
     this.playerWasOverlapping = false;  // Track of speler al overlapped
+    this.completionSymbol = null;
+    
+    // Registreer callback voor wanneer challenge voltooid wordt
+    this.challenge.onCompleteCallback = () => {
+      this.updateVisuals();
+    };
   }
 
   create() {
@@ -86,11 +92,6 @@ export class ChallengeDoor {
    * @returns {boolean} true als uitdaging is gestart
    */
   checkOverlap(player) {
-    // Check of challenge net voltooid is en update visuals
-    if (this.challenge.isCompleted && !this.completionSymbol) {
-      this.updateVisuals();
-    }
-
     // Skip als challenge actief of voltooid is
     if (this.challenge.isActive || this.challenge.isCompleted) {
       return false;
