@@ -86,6 +86,11 @@ export class ChallengeDoor {
    * @returns {boolean} true als uitdaging is gestart
    */
   checkOverlap(player) {
+    // Check of challenge net voltooid is en update visuals
+    if (this.challenge.isCompleted && !this.completionSymbol) {
+      this.updateVisuals();
+    }
+
     // Skip als challenge actief of voltooid is
     if (this.challenge.isActive || this.challenge.isCompleted) {
       return false;

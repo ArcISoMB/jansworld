@@ -89,14 +89,14 @@ export class ChallengeUI {
     const renderData = question.getRenderData();
     if (renderData) {
       if (renderData.type === 'clock') {
-        this.renderClock(centerX, centerY - 80, renderData.hours, renderData.minutes);
+        this.renderClock(centerX, centerY - 100, renderData.hours, renderData.minutes);
       } else if (renderData.type === 'image') {
-        this.renderImage(centerX, centerY - 80, renderData.image);
+        this.renderImage(centerX, centerY - 100, renderData.image);
       }
     }
 
-    // Vraag tekst
-    const promptY = renderData ? centerY + 20 : centerY - 100;
+    // Vraag tekst - hoger als er extra content is
+    const promptY = renderData ? centerY + 30 : centerY - 100;
     const promptText = this.scene.add.text(
       centerX,
       promptY,
@@ -110,13 +110,14 @@ export class ChallengeUI {
     ).setOrigin(0.5).setScrollFactor(0).setDepth(502);
     this.elements.push(promptText);
 
-    // Input type
+    // Input type - verder naar beneden als er extra content is
     const inputType = question.getInputType();
+    const inputY = renderData ? centerY + 130 : centerY + 80;
     
     if (inputType === 'buttons') {
-      this.renderButtons(question.getOptions(), centerX, centerY + 80);
+      this.renderButtons(question.getOptions(), centerX, inputY);
     } else {
-      this.renderTextInput(centerX, centerY + 100, question.getPlaceholder ? question.getPlaceholder() : '');
+      this.renderTextInput(centerX, inputY, question.getPlaceholder ? question.getPlaceholder() : '');
     }
   }
 
@@ -158,6 +159,7 @@ export class ChallengeUI {
     // Maak HTML input element voor tekst invoer
     const inputWidth = 300;
     const inputHeight = 40;
+    const submitButtonY = centerY + 60;  // Submit knop onder het invoerveld
     
     // Bereken screen positie
     const canvas = this.scene.game.canvas;
@@ -190,10 +192,10 @@ export class ChallengeUI {
     document.body.appendChild(this.inputElement);
     this.inputElement.focus();
 
-    // Submit knop (verder naar beneden om overlap te voorkomen)
+    // Submit knop (onder het invoerveld)
     const submitButton = this.scene.add.rectangle(
       centerX,
-      centerY + 120,
+      submitButtonY,
       150,
       45,
       0x44aa44,
@@ -209,7 +211,7 @@ export class ChallengeUI {
     });
     this.elements.push(submitButton);
 
-    const submitText = this.scene.add.text(centerX, centerY + 120, 'Bevestig', {
+    const submitText = this.scene.add.text(centerX, submitButtonY, 'Bevestig', {
       fontSize: '22px',
       fill: '#ffffff'
     }).setOrigin(0.5).setScrollFactor(0).setDepth(503);
