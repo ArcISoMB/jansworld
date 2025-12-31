@@ -42,9 +42,31 @@ export class ChallengeUI {
       1
     ).setScrollFactor(0).setDepth(500);
     this.elements.push(this.border);
+
+    // X knop om te sluiten
+    const closeButtonX = this.scene.cameras.main.centerX + 380;
+    const closeButtonY = this.scene.cameras.main.centerY - 230;
+    
+    this.closeButton = this.scene.add.rectangle(
+      closeButtonX, closeButtonY, 40, 40, 0xaa4444, 1
+    ).setScrollFactor(0).setDepth(502).setInteractive({ useHandCursor: true });
+    
+    this.closeButton.on('pointerover', () => this.closeButton.setFillStyle(0xcc5555));
+    this.closeButton.on('pointerout', () => this.closeButton.setFillStyle(0xaa4444));
+    this.closeButton.on('pointerdown', () => {
+      this.challenge.cancel();
+    });
+    this.elements.push(this.closeButton);
+
+    this.closeButtonText = this.scene.add.text(closeButtonX, closeButtonY, '✕', {
+      fontSize: '28px',
+      fill: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(503);
+    this.elements.push(this.closeButtonText);
   }
 
-  showQuestion(question, questionNum, totalQuestions) {
+  showQuestion(question, questionNum, totalQuestions, prefix = '') {
     // Verwijder vorige vraag elementen
     this.clearQuestionElements();
 
@@ -55,10 +77,10 @@ export class ChallengeUI {
     const progressText = this.scene.add.text(
       centerX,
       centerY - 200,
-      `Vraag ${questionNum} van ${totalQuestions}`,
+      `${prefix}Vraag ${questionNum} van ${totalQuestions}`,
       {
         fontSize: '24px',
-        fill: '#aaaaff'
+        fill: prefix ? '#ffaa44' : '#aaaaff'  // Oranje voor herkansing
       }
     ).setOrigin(0.5).setScrollFactor(0).setDepth(502);
     this.elements.push(progressText);
@@ -371,15 +393,64 @@ export class ChallengeUI {
     this.elements.push(closeText);
   }
 
+  /**
+   * Toon bericht dat er vragen opnieuw moeten worden geprobeerd
+   */
+  showRetryMessage(incorrectCount, callback) {
+    this.clearQuestionElements();
+
+    const centerX = this.scene.cameras.main.centerX;
+    const centerY = this.scene.cameras.main.centerY;
+
+    // Titel
+    const title = this.scene.add.text(
+      centerX, centerY - 60,
+      '🔄 Herkansing',
+      {
+        fontSize: '36px',
+        fill: '#ffaa44'
+      }
+    ).setOrigin(0.5).setScrollFactor(0).setDepth(502);
+    this.elements.push(title);
+
+    // Uitleg
+    const explanation = this.scene.add.text(
+      centerX, centerY + 10,
+      `Je hebt ${incorrectCount} ${incorrectCount === 1 ? 'vraag' : 'vragen'} fout beantwoord.\nProbeer ${incorrectCount === 1 ? 'deze' : 'deze'} opnieuw!`,
+      {
+        fontSize: '24px',
+        fill: '#ffffff',
+        align: 'center'
+      }
+    ).setOrigin(0.5).setScrollFactor(0).setDepth(502);
+    this.elements.push(explanation);
+
+    // Doorgaan knop
+    const continueButton = this.scene.add.rectangle(
+      centerX, centerY + 100, 180, 50, 0x44aa44, 1
+    ).setScrollFactor(0).setDepth(502).setInteractive({ useHandCursor: true });
+
+    continueButton.on('pointerover', () => continueButton.setFillStyle(0x55cc55));
+    continueButton.on('pointerout', () => continueButton.setFillStyle(0x44aa44));
+    continueButton.on('pointerdown', callback);
+    this.elements.push(continueButton);
+
+    const continueText = this.scene.add.text(centerX, centerY + 100, 'Doorgaan', {
+      fontSize: '24px',
+      fill: '#ffffff'
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(503);
+    this.elements.push(continueText);
+  }
+
   clearQuestionElements() {
-    // Verwijder alles behalve overlay en container
+    // Verwijder alles behalve overlay, container en X knop
     if (this.inputElement) {
       this.inputElement.remove();
       this.inputElement = null;
     }
     
-    // Bewaar alleen de eerste 3 elementen (overlay, border, container)
-    while (this.elements.length > 3) {
+    // Bewaar alleen de eerste 5 elementen (overlay, container, border, closeButton, closeButtonText)
+    while (this.elements.length > 5) {
       const element = this.elements.pop();
       if (element && element.destroy) {
         element.destroy();

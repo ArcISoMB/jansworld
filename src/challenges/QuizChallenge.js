@@ -13,12 +13,22 @@ export class QuizChallenge extends Challenge {
     super(scene, 'quiz');
     this.questions = questions;
     this.currentQuestionIndex = 0;
-    this.correctAnswers = 0;
+    this.incorrectQuestions = [];  // Vragen die fout beantwoord zijn
+    this.isRetryRound = false;     // Of we in de retry ronde zitten
     this.ui = null;
   }
 
   start() {
     super.start();
+    
+    // Reset state
+    this.currentQuestionIndex = 0;
+    this.incorrectQuestions = [];
+    this.isRetryRound = false;
+    this.questions.forEach(q => {
+      q.answered = false;
+      q.correct = false;
+    });
     
     // Maak de UI
     this.ui = new ChallengeUI(this.scene, this);
@@ -28,10 +38,28 @@ export class QuizChallenge extends Challenge {
     this.showCurrentQuestion();
   }
 
+  /**
+   * Sluit de quiz zonder te voltooien (gebruiker annuleert)
+   */
+  cancel() {
+    if (this.ui) {
+      this.ui.destroy();
+      this.ui = null;
+    }
+    this.fail();
+  }
+
   showCurrentQuestion() {
-    if (this.currentQuestionIndex < this.questions.length) {
-      const question = this.questions[this.currentQuestionIndex];
-      this.ui.showQuestion(question, this.currentQuestionIndex + 1, this.questions.length);
+    const questionsToShow = this.isRetryRound ? this.incorrectQuestions : this.questions;
+    
+    if (this.currentQuestionIndex < questionsToShow.length) {
+      const question = questionsToShow[this.currentQuestionIndex];
+      const displayNum = this.currentQuestionIndex + 1;
+      const totalDisplay = questionsToShow.length;
+      
+      // Toon retry indicator als we in retry modus zijn
+      const prefix = this.isRetryRound ? 'Herkansing: ' : '';
+      this.ui.showQuestion(question, displayNum, totalDisplay, prefix);
     }
   }
 
@@ -40,20 +68,22 @@ export class QuizChallenge extends Challenge {
    * @param {any} answer
    */
   submitAnswer(answer) {
-    const question = this.questions[this.currentQuestionIndex];
+    const questionsToShow = this.isRetryRound ? this.incorrectQuestions : this.questions;
+    const question = questionsToShow[this.currentQuestionIndex];
     const isCorrect = question.checkAnswer(answer);
     
-    if (isCorrect) {
-      this.correctAnswers++;
+    if (!isCorrect && !this.isRetryRound) {
+      // Eerste ronde: sla foute vragen op voor retry
+      this.incorrectQuestions.push(question);
     }
 
     // Toon feedback
     this.ui.showFeedback(isCorrect, () => {
       this.currentQuestionIndex++;
       
-      if (this.currentQuestionIndex >= this.questions.length) {
-        // Quiz afgelopen
-        this.finishQuiz();
+      if (this.currentQuestionIndex >= questionsToShow.length) {
+        // Ronde afgelopen
+        this.finishRound();
       } else {
         // Volgende vraag
         this.showCurrentQuestion();
@@ -61,11 +91,51 @@ export class QuizChallenge extends Challenge {
     });
   }
 
-  finishQuiz() {
-    // Alle vragen moeten goed zijn voor succes
-    const passed = this.correctAnswers === this.questions.length;
+  finishRound() {
+    if (this.isRetryRound) {
+      // Retry ronde is klaar, check of alle vragen nu goed zijn
+      const allCorrectNow = this.incorrectQuestions.every(q => q.correct);
+      
+      if (allCorrectNow) {
+        this.showFinalResults(true);
+      } else {
+        // Nog steeds foute antwoorden, filter voor volgende retry
+        this.incorrectQuestions = this.incorrectQuestions.filter(q => !q.correct);
+        this.currentQuestionIndex = 0;
+        
+        // Toon tussenresultaat en start nieuwe retry
+        this.ui.showRetryMessage(this.incorrectQuestions.length, () => {
+          this.showCurrentQuestion();
+        });
+      }
+    } else {
+      // Eerste ronde klaar
+      if (this.incorrectQuestions.length === 0) {
+        // Alles goed in eerste poging!
+        this.showFinalResults(true);
+      } else {
+        // Er zijn foute antwoorden, start retry ronde
+        this.isRetryRound = true;
+        this.currentQuestionIndex = 0;
+        
+        // Reset de foute vragen voor retry
+        this.incorrectQuestions.forEach(q => {
+          q.answered = false;
+          q.correct = false;
+        });
+        
+        this.ui.showRetryMessage(this.incorrectQuestions.length, () => {
+          this.showCurrentQuestion();
+        });
+      }
+    }
+  }
+
+  showFinalResults(passed) {
+    const totalQuestions = this.questions.length;
+    const correctFirst = totalQuestions - this.incorrectQuestions.length;
     
-    this.ui.showResults(this.correctAnswers, this.questions.length, passed, () => {
+    this.ui.showResults(totalQuestions, totalQuestions, passed, () => {
       this.ui.destroy();
       this.ui = null;
       
@@ -97,19 +167,11 @@ export class QuizChallenge extends Challenge {
   }
 
   onFail() {
-    // Reset quiz voor volgende poging
-    this.currentQuestionIndex = 0;
-    this.correctAnswers = 0;
-    this.questions.forEach(q => {
-      q.answered = false;
-      q.correct = false;
-    });
-    
     // Toon fail bericht
     const text = this.scene.add.text(
       this.scene.cameras.main.centerX,
       this.scene.cameras.main.centerY,
-      '❌ Probeer het nog eens!',
+      '❌ Gestopt met uitdaging',
       {
         fontSize: '48px',
         fill: '#ff0000',
