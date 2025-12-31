@@ -242,10 +242,38 @@ export class ChallengeUI {
     
     // Add resize listener to reposition on orientation change or resize
     this.resizeHandler = () => {
+      // Multiple repositioning attempts for Android orientation change
+      // Android needs more time for the viewport to fully settle
       requestAnimationFrame(positionInput);
+      setTimeout(positionInput, 100);
+      setTimeout(positionInput, 300);
+      setTimeout(positionInput, 500);
     };
+    
+    // Orientation change handler with longer delays for Android
+    this.orientationHandler = () => {
+      // Android orientation change needs significant delay
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          positionInput();
+          setTimeout(positionInput, 100);
+          setTimeout(positionInput, 300);
+          setTimeout(positionInput, 600);
+        });
+      }, 100);
+    };
+    
     window.addEventListener('resize', this.resizeHandler);
-    window.addEventListener('orientationchange', this.resizeHandler);
+    window.addEventListener('orientationchange', this.orientationHandler);
+    
+    // Also listen for visual viewport changes (modern browsers, especially Chrome on Android)
+    if (window.visualViewport) {
+      this.viewportHandler = () => {
+        requestAnimationFrame(positionInput);
+      };
+      window.visualViewport.addEventListener('resize', this.viewportHandler);
+      window.visualViewport.addEventListener('scroll', this.viewportHandler);
+    }
     
     // Focus with delay for Safari
     setTimeout(() => {
@@ -536,8 +564,16 @@ export class ChallengeUI {
     // Clean up resize handlers
     if (this.resizeHandler) {
       window.removeEventListener('resize', this.resizeHandler);
-      window.removeEventListener('orientationchange', this.resizeHandler);
       this.resizeHandler = null;
+    }
+    if (this.orientationHandler) {
+      window.removeEventListener('orientationchange', this.orientationHandler);
+      this.orientationHandler = null;
+    }
+    if (this.viewportHandler && window.visualViewport) {
+      window.visualViewport.removeEventListener('resize', this.viewportHandler);
+      window.visualViewport.removeEventListener('scroll', this.viewportHandler);
+      this.viewportHandler = null;
     }
     this.repositionInput = null;
     this.inputLayoutData = null;
@@ -560,8 +596,16 @@ export class ChallengeUI {
     // Clean up resize handlers
     if (this.resizeHandler) {
       window.removeEventListener('resize', this.resizeHandler);
-      window.removeEventListener('orientationchange', this.resizeHandler);
       this.resizeHandler = null;
+    }
+    if (this.orientationHandler) {
+      window.removeEventListener('orientationchange', this.orientationHandler);
+      this.orientationHandler = null;
+    }
+    if (this.viewportHandler && window.visualViewport) {
+      window.visualViewport.removeEventListener('resize', this.viewportHandler);
+      window.visualViewport.removeEventListener('scroll', this.viewportHandler);
+      this.viewportHandler = null;
     }
     this.repositionInput = null;
     this.inputLayoutData = null;

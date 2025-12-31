@@ -30,6 +30,9 @@ class GameScene extends Phaser.Scene {
     
     // Load teleporter sprites
     this.load.image('teleporter', 'sprites/Base pack/Items/switchMid.png');
+    
+    // Load key sprite
+    this.load.image('keyYellow', 'sprites/Base pack/Items/keyYellow.png');
   }
 
   create() {
@@ -59,9 +62,16 @@ class GameScene extends Phaser.Scene {
     // Challenge state
     this.challengeActive = false;
     this.challengeDoors = [];
+    this.hasKey = false;
+    this.completedChallenges = 0;
+    this.totalChallenges = 0;
+    this.keySprite = null;  // Physical key sprite in the level
 
     // Create challenge doors
     this.createChallengeDoors();
+
+    // Create progress UI (after challenge doors are created so we know total)
+    this.createProgressUI();
 
     // Create player character (alien sprite)
     const startPos = this.levelGeometry.getPlayerStartPosition();
@@ -157,6 +167,11 @@ class GameScene extends Phaser.Scene {
   }
 
   nextLevel() {
+    // Temporarily show finished animation instead of going to next level
+    this.showFinishedAnimation();
+    return;
+    
+    /* Original nextLevel code - temporarily disabled
     this.currentLevel++;
     
     // Clean up old objects
@@ -174,6 +189,10 @@ class GameScene extends Phaser.Scene {
       this.challengeDoors.forEach(cd => cd.destroy());
       this.challengeDoors = [];
     }
+    if (this.keySprite) {
+      this.keySprite.destroy();
+      this.keySprite = null;
+    }
     
     // Regenerate level - use RandomLevelBuilder for level 2+
     this.levelGeometry = new LevelGeometry();
@@ -184,8 +203,11 @@ class GameScene extends Phaser.Scene {
     this.door = levelObjects.door;
     this.teleporters = levelObjects.teleporters || [];
 
-    // Create challenge doors for new level
+    // Create challenge doors for new level (this resets key state)
     this.createChallengeDoors();
+    
+    // Update progress UI for new level
+    this.updateProgressUI();
     
     // Reset player position
     const startPos = this.levelGeometry.getPlayerStartPosition();
@@ -195,11 +217,124 @@ class GameScene extends Phaser.Scene {
     
     // Update text
     this.text.setText(this.isMobile ? 
-      `Level ${this.currentLevel}\nUse buttons to play` : 
-      `Level ${this.currentLevel}\nArrow keys to move, Space to jump`);
+      `Level ${this.currentLevel}\nGebruik de knoppen om te spelen` : 
+      `Level ${this.currentLevel}\nPijltjestoetsen om te bewegen, Spatiebalk om te springen`);
     
     // Re-add collision
     this.physics.add.collider(this.player, this.platforms);
+    */
+  }
+  
+  /**
+   * Show a finished/victory animation
+   */
+  showFinishedAnimation() {
+    // Prevent multiple triggers
+    if (this.finishedShowing) return;
+    this.finishedShowing = true;
+    
+    // Freeze player
+    this.player.body.setVelocity(0, 0);
+    this.challengeActive = true;  // Disable controls
+    
+    const centerX = this.cameras.main.centerX;
+    const centerY = this.cameras.main.centerY;
+    
+    // Dark overlay
+    const overlay = this.add.rectangle(
+      centerX, centerY,
+      this.cameras.main.width, this.cameras.main.height,
+      0x000000, 0
+    ).setScrollFactor(0).setDepth(700);
+    
+    // Fade in overlay
+    this.tweens.add({
+      targets: overlay,
+      alpha: 0.8,
+      duration: 500
+    });
+    
+    // Victory elements (start invisible)
+    const trophy = this.add.text(centerX, centerY - 80, '🏆', {
+      fontSize: '120px'
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(701).setAlpha(0).setScale(0);
+    
+    const title = this.add.text(centerX, centerY + 50, 'Gefeliciteerd!', {
+      fontSize: '64px',
+      fill: '#ffdd00',
+      stroke: '#000000',
+      strokeThickness: 6
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(701).setAlpha(0);
+    
+    const subtitle = this.add.text(centerX, centerY + 130, 'Je hebt het level voltooid!', {
+      fontSize: '32px',
+      fill: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 4
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(701).setAlpha(0);
+    
+    // Animate trophy pop-in
+    this.time.delayedCall(300, () => {
+      this.tweens.add({
+        targets: trophy,
+        alpha: 1,
+        scale: 1,
+        duration: 500,
+        ease: 'Back.easeOut'
+      });
+    });
+    
+    // Animate title
+    this.time.delayedCall(600, () => {
+      this.tweens.add({
+        targets: title,
+        alpha: 1,
+        duration: 400
+      });
+    });
+    
+    // Animate subtitle
+    this.time.delayedCall(900, () => {
+      this.tweens.add({
+        targets: subtitle,
+        alpha: 1,
+        duration: 400
+      });
+    });
+    
+    // Add confetti-like particles
+    this.time.delayedCall(400, () => {
+      this.createConfetti();
+    });
+  }
+  
+  /**
+   * Create confetti particle effect
+   */
+  createConfetti() {
+    const colors = ['🎉', '🎊', '⭐', '✨', '🌟'];
+    const centerX = this.cameras.main.centerX;
+    
+    for (let i = 0; i < 20; i++) {
+      const emoji = colors[Math.floor(Math.random() * colors.length)];
+      const x = centerX + (Math.random() - 0.5) * 600;
+      const startY = -50;
+      
+      const particle = this.add.text(x, startY, emoji, {
+        fontSize: `${24 + Math.random() * 24}px`
+      }).setScrollFactor(0).setDepth(702);
+      
+      this.tweens.add({
+        targets: particle,
+        y: this.cameras.main.height + 50,
+        x: x + (Math.random() - 0.5) * 200,
+        rotation: Math.random() * 6,
+        duration: 2000 + Math.random() * 2000,
+        delay: Math.random() * 1000,
+        ease: 'Quad.easeIn',
+        onComplete: () => particle.destroy()
+      });
+    }
   }
 
   update() {
@@ -254,9 +389,19 @@ class GameScene extends Phaser.Scene {
       this.player.anims.play('jump', true);
     }
 
-    // Check for door collision
+    // Check for door collision - only proceed if player has key
     if (this.door && this.physics.overlap(this.player, this.door)) {
-      this.nextLevel();
+      if (this.hasKey) {
+        this.nextLevel();
+      } else {
+        // Show hint that key is needed
+        this.showDoorLockedHint();
+      }
+    }
+
+    // Check for key pickup
+    if (this.keySprite && this.physics.overlap(this.player, this.keySprite)) {
+      this.collectKey();
     }
 
     // Check for challenge door collision
@@ -298,6 +443,9 @@ class GameScene extends Phaser.Scene {
    */
   createChallengeDoors() {
     const challengeDoorData = this.levelGeometry.getChallengeDoors();
+    this.totalChallenges = challengeDoorData.length;
+    this.completedChallenges = 0;
+    this.hasKey = false;
     
     for (const doorData of challengeDoorData) {
       let challenge;
@@ -339,10 +487,240 @@ class GameScene extends Phaser.Scene {
       
       if (challenge) {
         const challengeDoor = new ChallengeDoor(this, doorData.x, doorData.y, challenge);
+        
+        // Add callback for when challenge is completed
+        const originalCallback = challenge.onCompleteCallback;
+        challenge.onCompleteCallback = () => {
+          if (originalCallback) originalCallback();
+          this.onChallengeCompleted();
+        };
+        
         challengeDoor.create();
         this.challengeDoors.push(challengeDoor);
       }
     }
+    
+    // If no challenges, player starts with key
+    if (this.totalChallenges === 0) {
+      this.hasKey = true;
+    }
+  }
+
+  /**
+   * Create the progress UI showing challenges completed and key status
+   */
+  createProgressUI() {
+    const padding = 15;
+    const x = this.cameras.main.width - padding;
+    const y = padding + 10;  // Moved down a bit
+    
+    // Challenge progress text (right-aligned)
+    this.progressText = this.add.text(x, y, '', {
+      fontSize: '20px',
+      fill: '#ffffff',
+      align: 'right',
+      stroke: '#000000',
+      strokeThickness: 3
+    }).setScrollFactor(0).setDepth(101).setOrigin(1, 0);
+    
+    // Key status text (right-aligned, below progress)
+    this.keyStatusText = this.add.text(x, y + 28, '', {
+      fontSize: '22px',
+      fill: '#ffdd00',
+      align: 'right',
+      stroke: '#000000',
+      strokeThickness: 3
+    }).setScrollFactor(0).setDepth(101).setOrigin(1, 0);
+    
+    this.updateProgressUI();
+  }
+  
+  /**
+   * Update the progress UI display
+   */
+  updateProgressUI() {
+    if (this.progressText) {
+      if (this.totalChallenges > 0) {
+        this.progressText.setText(`⭐ ${this.completedChallenges} / ${this.totalChallenges}`);
+      } else {
+        this.progressText.setText('Geen uitdagingen');
+      }
+    }
+    
+    if (this.keyStatusText) {
+      if (this.hasKey) {
+        this.keyStatusText.setText('🔑 Sleutel!');
+        this.keyStatusText.setFill('#44ff44');
+      } else if (this.keySprite) {
+        // Key has spawned but not collected yet
+        this.keyStatusText.setText('🔑 Zoek de sleutel!');
+        this.keyStatusText.setFill('#ffdd00');
+      } else {
+        this.keyStatusText.setText('🔒 Nodig: sleutel');
+        this.keyStatusText.setFill('#ff6666');
+      }
+    }
+  }
+  
+  /**
+   * Called when a challenge is completed
+   */
+  onChallengeCompleted() {
+    this.completedChallenges++;
+    
+    // Check if all challenges are done - spawn key in level
+    if (this.completedChallenges >= this.totalChallenges && !this.keySprite && !this.hasKey) {
+      this.spawnKey();
+    }
+    
+    this.updateProgressUI();
+  }
+  
+  /**
+   * Spawn the key sprite in the level
+   */
+  spawnKey() {
+    const keyX = 1600;
+    const keyY = 2200; 
+    
+    // Create key sprite
+    this.keySprite = this.physics.add.sprite(keyX, keyY, 'keyYellow');
+    this.keySprite.body.setAllowGravity(false);
+    this.keySprite.setDepth(50);
+    
+    // Add floating animation
+    this.tweens.add({
+      targets: this.keySprite,
+      y: keyY - 15,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+    
+    // Add glow/scale pulse
+    this.tweens.add({
+      targets: this.keySprite,
+      scale: 1.2,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+    
+    // Show message that key appeared
+    this.showKeySpawned();
+  }
+  
+  /**
+   * Collect the key when player touches it
+   */
+  collectKey() {
+    if (!this.keySprite) return;
+    
+    // Destroy key sprite
+    this.keySprite.destroy();
+    this.keySprite = null;
+    
+    // Give player the key
+    this.hasKey = true;
+    this.updateProgressUI();
+    
+    // Show obtained message
+    this.showKeyObtained();
+  }
+  
+  /**
+   * Show message that key has appeared in the level
+   */
+  showKeySpawned() {
+    const centerX = this.cameras.main.centerX;
+    const centerY = this.cameras.main.centerY - 100;
+    
+    const text = this.add.text(centerX, centerY, '🔑 Een sleutel is verschenen!\nZoek en pak de sleutel!', {
+      fontSize: '26px',
+      fill: '#ffdd00',
+      backgroundColor: '#000000aa',
+      padding: { x: 20, y: 15 },
+      align: 'center',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(600);
+    
+    // Fade out after 2.5 seconds
+    this.tweens.add({
+      targets: text,
+      alpha: 0,
+      duration: 500,
+      delay: 2000,
+      onComplete: () => text.destroy()
+    });
+  }
+  
+  /**
+   * Show key obtained animation/message
+   */
+  showKeyObtained() {
+    const centerX = this.cameras.main.centerX;
+    const centerY = this.cameras.main.centerY;
+    
+    // Key obtained popup
+    const popup = this.add.rectangle(centerX, centerY, 350, 150, 0x225522, 0.95)
+      .setScrollFactor(0)
+      .setDepth(600);
+    
+    const border = this.add.rectangle(centerX, centerY, 354, 154, 0x44ff44, 1)
+      .setScrollFactor(0)
+      .setDepth(599);
+    
+    const keyIcon = this.add.text(centerX, centerY - 25, '🔑', {
+      fontSize: '48px'
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(601);
+    
+    const text = this.add.text(centerX, centerY + 30, 'Sleutel verkregen!\nGa naar de deur!', {
+      fontSize: '24px',
+      fill: '#ffffff',
+      align: 'center'
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(601);
+    
+    // Auto-dismiss after 2 seconds
+    this.time.delayedCall(2000, () => {
+      popup.destroy();
+      border.destroy();
+      keyIcon.destroy();
+      text.destroy();
+    });
+  }
+  
+  /**
+   * Show hint that door is locked
+   */
+  showDoorLockedHint() {
+    // Only show if not already showing
+    if (this.doorHintActive) return;
+    this.doorHintActive = true;
+    
+    const centerX = this.cameras.main.centerX;
+    const centerY = this.cameras.main.centerY - 100;
+    
+    const hint = this.add.text(centerX, centerY, '🔒 Voltooi alle uitdagingen voor de sleutel!', {
+      fontSize: '24px',
+      fill: '#ff6666',
+      backgroundColor: '#000000aa',
+      padding: { x: 15, y: 10 }
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(600);
+    
+    // Fade out and remove after 1.5 seconds
+    this.tweens.add({
+      targets: hint,
+      alpha: 0,
+      duration: 500,
+      delay: 1000,
+      onComplete: () => {
+        hint.destroy();
+        this.doorHintActive = false;
+      }
+    });
   }
 
   createMobileButtons() {
@@ -492,8 +870,8 @@ const config = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: 1600,
-    height: 800
+    width: 3200,
+    height: 2400
   },
   input: {
     activePointers: 3 // Enable up to 3 simultaneous touch points

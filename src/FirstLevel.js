@@ -70,8 +70,8 @@ export class FirstLevel extends LevelBuilder {
     levelGeometry.startY = 2000;
 
     // Set door position
-    levelGeometry.doorX = 3000;
-    levelGeometry.doorY = 50;
+    levelGeometry.doorX = 2800;
+    levelGeometry.doorY = 25;
     levelGeometry.doorPlatformY = 120;
 
     // Teleporter positions - one-way teleportation
@@ -101,7 +101,7 @@ export class FirstLevel extends LevelBuilder {
               question: 'Hoeveel is 7 × 8?',
               answer: 56
             },
-            // Spelling vraag
+            // Spelling vraaggit add
             {
               type: 'spelling',
               image: 'alienStand',
@@ -119,8 +119,8 @@ export class FirstLevel extends LevelBuilder {
         }
       },
       {
-        x: 2800,
-        y: 0,
+        x: 2700,
+        y: 50,
         challengeType: 'quiz',
         challengeData: {
           questions: [
