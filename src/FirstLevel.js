@@ -79,5 +79,51 @@ export class FirstLevel extends LevelBuilder {
       { x: 2920, y: 1260, type: 'from' }, // From: On platform at y: 1300
       { x: 1900, y: 360, type: 'to' }     // To: On platform at y: 400
     ];
+
+    // Challenge doors - quiz challenge op het eerste platform
+    levelGeometry.challengeDoors = [
+      {
+        x: 500,
+        y: 2050,  // Op platform op y: 2100
+        challengeType: 'quiz',
+        challengeData: {
+          questions: [
+            // Multiple choice vraag
+            {
+              type: 'multipleChoice',
+              question: 'Wat is de hoofdstad van Nederland?',
+              options: ['Rotterdam', 'Amsterdam', 'Den Haag', 'Utrecht'],
+              correctIndex: 1
+            },
+            // Rekenvraag
+            {
+              type: 'calculation',
+              question: 'Hoeveel is 7 × 8?',
+              answer: 56
+            },
+            // Klok vraag
+            {
+              type: 'clock',
+              hours: 10,
+              minutes: 30
+            },
+            // Spelling vraag
+            {
+              type: 'spelling',
+              image: 'alienStand',
+              answer: 'alien',
+              hint: 'Hoe noem je dit wezen uit de ruimte?'
+            },
+            // Nog een multiple choice
+            {
+              type: 'multipleChoice',
+              question: 'Hoeveel poten heeft een spin?',
+              options: ['4', '6', '8', '10'],
+              correctIndex: 2
+            }
+          ]
+        }
+      }
+    ];
   }
 }

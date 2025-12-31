@@ -10,6 +10,8 @@ export class LevelGeometry {
     this.startY = 2200;
     this.platforms = [];
     this.floorTiles = [];
+    this.teleporters = [];
+    this.challengeDoors = [];  // Array van {x, y, challengeType, challengeData}
   }
 
   getPlayerStartPosition() {
@@ -26,5 +28,9 @@ export class LevelGeometry {
 
   getPlatforms() {
     return this.platforms;
+  }
+
+  getChallengeDoors() {
+    return this.challengeDoors;
   }
 }

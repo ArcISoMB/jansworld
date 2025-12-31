@@ -2,6 +2,12 @@ import Phaser from 'phaser';
 import { LevelGeometry } from './LevelGeometry.js';
 import { FirstLevel } from './FirstLevel.js';
 import { RandomLevelBuilder } from './RandomLevelBuilder.js';
+import { ChallengeDoor } from './entities/ChallengeDoor.js';
+import { QuizChallenge } from './challenges/QuizChallenge.js';
+import { MultipleChoiceQuestion } from './challenges/questions/MultipleChoiceQuestion.js';
+import { CalculationQuestion } from './challenges/questions/CalculationQuestion.js';
+import { ClockQuestion } from './challenges/questions/ClockQuestion.js';
+import { SpellingQuestion } from './challenges/questions/SpellingQuestion.js';
 
 class GameScene extends Phaser.Scene {
   constructor() {
@@ -50,34 +56,47 @@ class GameScene extends Phaser.Scene {
     this.door = levelObjects.door;
     this.teleporters = levelObjects.teleporters || [];
 
+    // Challenge state
+    this.challengeActive = false;
+    this.challengeDoors = [];
+
+    // Create challenge doors
+    this.createChallengeDoors();
+
     // Create player character (alien sprite)
     const startPos = this.levelGeometry.getPlayerStartPosition();
     this.player = this.physics.add.sprite(startPos.x, startPos.y, 'alienStand');
     this.player.body.setGravityY(800);
     this.player.setScale(0.8); // Adjust size if needed
 
-    // Create animations for the player
-    this.anims.create({
-      key: 'walk',
-      frames: [
-        { key: 'alienWalk1' },
-        { key: 'alienWalk2' }
-      ],
-      frameRate: 10,
-      repeat: -1
-    });
+    // Create animations for the player (only if they don't exist yet)
+    if (!this.anims.exists('walk')) {
+      this.anims.create({
+        key: 'walk',
+        frames: [
+          { key: 'alienWalk1' },
+          { key: 'alienWalk2' }
+        ],
+        frameRate: 10,
+        repeat: -1
+      });
+    }
 
-    this.anims.create({
-      key: 'idle',
-      frames: [{ key: 'alienStand' }],
-      frameRate: 10
-    });
+    if (!this.anims.exists('idle')) {
+      this.anims.create({
+        key: 'idle',
+        frames: [{ key: 'alienStand' }],
+        frameRate: 10
+      });
+    }
 
-    this.anims.create({
-      key: 'jump',
-      frames: [{ key: 'alienJump' }],
-      frameRate: 10
-    });
+    if (!this.anims.exists('jump')) {
+      this.anims.create({
+        key: 'jump',
+        frames: [{ key: 'alienJump' }],
+        frameRate: 10
+      });
+    }
 
     // Add collision between player and platforms
     this.physics.add.collider(this.player, this.platforms);
@@ -118,8 +137,19 @@ class GameScene extends Phaser.Scene {
     this.mobileControls = {
       left: false,
       right: false,
-      jump: false
+      jump: false,
+      jumpRequested: false  // Persists until jump is executed
     };
+
+    // Track active pointers for each button to handle multi-touch properly
+    this.activePointers = {
+      left: new Set(),
+      right: new Set(),
+      jump: new Set()
+    };
+
+    // Track if space was pressed (for edge-triggered jump)
+    this.spaceWasPressed = false;
 
     if (this.isMobile) {
       this.createMobileButtons();
@@ -140,6 +170,10 @@ class GameScene extends Phaser.Scene {
       this.teleporters.forEach(t => t.destroy());
       this.teleporters = [];
     }
+    if (this.challengeDoors) {
+      this.challengeDoors.forEach(cd => cd.destroy());
+      this.challengeDoors = [];
+    }
     
     // Regenerate level - use RandomLevelBuilder for level 2+
     this.levelGeometry = new LevelGeometry();
@@ -149,6 +183,9 @@ class GameScene extends Phaser.Scene {
     this.platforms = levelObjects.platforms;
     this.door = levelObjects.door;
     this.teleporters = levelObjects.teleporters || [];
+
+    // Create challenge doors for new level
+    this.createChallengeDoors();
     
     // Reset player position
     const startPos = this.levelGeometry.getPlayerStartPosition();
@@ -166,6 +203,11 @@ class GameScene extends Phaser.Scene {
   }
 
   update() {
+    // Skip player control when challenge is active
+    if (this.challengeActive) {
+      return;
+    }
+
     // Horizontal movement - keyboard or mobile
     if (this.cursors.left.isDown || this.mobileControls.left) {
       this.player.body.setVelocityX(-this.moveSpeed);
@@ -186,14 +228,25 @@ class GameScene extends Phaser.Scene {
       }
     }
 
-    // Jumping - keyboard or mobile, only if on ground or platform
-    if ((Phaser.Input.Keyboard.JustDown(this.spaceKey) || this.mobileControls.jump) && 
-        this.player.body.touching.down) {
-      this.player.body.setVelocityY(this.jumpVelocity);
-      this.player.anims.play('jump', true);
-      if (this.mobileControls.jump) {
-        this.mobileControls.jump = false; // Prevent continuous jumping
+    // Handle keyboard jump - track edge trigger manually for reliability
+    const spaceIsDown = this.spaceKey.isDown;
+    const spaceJustPressed = spaceIsDown && !this.spaceWasPressed;
+    this.spaceWasPressed = spaceIsDown;
+
+    // Request jump on button press (will be consumed when grounded)
+    if (spaceJustPressed || this.mobileControls.jumpRequested) {
+      if (this.player.body.touching.down) {
+        // Execute jump
+        this.player.body.setVelocityY(this.jumpVelocity);
+        this.player.anims.play('jump', true);
+        this.mobileControls.jumpRequested = false;  // Consume the request
       }
+      // If not grounded, jumpRequested stays true until we land and jump
+    }
+
+    // Clear jump request if button/key released while still in air
+    if (!spaceIsDown && !this.mobileControls.jump) {
+      this.mobileControls.jumpRequested = false;
     }
 
     // Play jump animation when in air
@@ -204,6 +257,13 @@ class GameScene extends Phaser.Scene {
     // Check for door collision
     if (this.door && this.physics.overlap(this.player, this.door)) {
       this.nextLevel();
+    }
+
+    // Check for challenge door collision
+    for (const challengeDoor of this.challengeDoors) {
+      if (challengeDoor.checkOverlap(this.player)) {
+        break;  // Only one challenge at a time
+      }
     }
 
     // Check for teleporter collision - one-way only from 'from' to 'to'
@@ -233,6 +293,58 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Maakt challenge deuren aan op basis van level geometry
+   */
+  createChallengeDoors() {
+    const challengeDoorData = this.levelGeometry.getChallengeDoors();
+    
+    for (const doorData of challengeDoorData) {
+      let challenge;
+      
+      if (doorData.challengeType === 'quiz') {
+        // Maak Question objecten van de data
+        const questions = doorData.challengeData.questions.map(qData => {
+          switch (qData.type) {
+            case 'multipleChoice':
+              return new MultipleChoiceQuestion({
+                question: qData.question,
+                options: qData.options,
+                correctIndex: qData.correctIndex
+              });
+            case 'calculation':
+              return new CalculationQuestion({
+                question: qData.question,
+                answer: qData.answer
+              });
+            case 'clock':
+              return new ClockQuestion({
+                hours: qData.hours,
+                minutes: qData.minutes
+              });
+            case 'spelling':
+              return new SpellingQuestion({
+                image: qData.image,
+                answer: qData.answer,
+                hint: qData.hint
+              });
+            default:
+              console.warn(`Onbekend vraagtype: ${qData.type}`);
+              return null;
+          }
+        }).filter(q => q !== null);
+
+        challenge = new QuizChallenge(this, questions);
+      }
+      
+      if (challenge) {
+        const challengeDoor = new ChallengeDoor(this, doorData.x, doorData.y, challenge);
+        challengeDoor.create();
+        this.challengeDoors.push(challengeDoor);
+      }
+    }
+  }
+
   createMobileButtons() {
     const buttonSize = 120;
     const buttonMargin = 30;
@@ -254,21 +366,31 @@ class GameScene extends Phaser.Scene {
     leftText.setScrollFactor(0);
     leftText.setDepth(101);
 
-    this.leftButton.on('pointerdown', () => {
+    this.leftButton.on('pointerdown', (pointer) => {
+      this.activePointers.left.add(pointer.id);
       this.mobileControls.left = true;
       this.leftButton.setFillStyle(0x666666, 0.9);
     });
-    this.leftButton.on('pointerup', () => {
-      this.mobileControls.left = false;
-      this.leftButton.setFillStyle(0x444444, 0.7);
+    this.leftButton.on('pointerup', (pointer) => {
+      this.activePointers.left.delete(pointer.id);
+      if (this.activePointers.left.size === 0) {
+        this.mobileControls.left = false;
+        this.leftButton.setFillStyle(0x444444, 0.7);
+      }
     });
-    this.leftButton.on('pointerout', () => {
-      this.mobileControls.left = false;
-      this.leftButton.setFillStyle(0x444444, 0.7);
+    this.leftButton.on('pointerout', (pointer) => {
+      this.activePointers.left.delete(pointer.id);
+      if (this.activePointers.left.size === 0) {
+        this.mobileControls.left = false;
+        this.leftButton.setFillStyle(0x444444, 0.7);
+      }
     });
-    this.leftButton.on('pointerupoutside', () => {
-      this.mobileControls.left = false;
-      this.leftButton.setFillStyle(0x444444, 0.7);
+    this.leftButton.on('pointerupoutside', (pointer) => {
+      this.activePointers.left.delete(pointer.id);
+      if (this.activePointers.left.size === 0) {
+        this.mobileControls.left = false;
+        this.leftButton.setFillStyle(0x444444, 0.7);
+      }
     });
 
     // Right button (lower left corner, next to left button)
@@ -285,21 +407,31 @@ class GameScene extends Phaser.Scene {
     rightText.setScrollFactor(0);
     rightText.setDepth(101);
 
-    this.rightButton.on('pointerdown', () => {
+    this.rightButton.on('pointerdown', (pointer) => {
+      this.activePointers.right.add(pointer.id);
       this.mobileControls.right = true;
       this.rightButton.setFillStyle(0x666666, 0.9);
     });
-    this.rightButton.on('pointerup', () => {
-      this.mobileControls.right = false;
-      this.rightButton.setFillStyle(0x444444, 0.7);
+    this.rightButton.on('pointerup', (pointer) => {
+      this.activePointers.right.delete(pointer.id);
+      if (this.activePointers.right.size === 0) {
+        this.mobileControls.right = false;
+        this.rightButton.setFillStyle(0x444444, 0.7);
+      }
     });
-    this.rightButton.on('pointerout', () => {
-      this.mobileControls.right = false;
-      this.rightButton.setFillStyle(0x444444, 0.7);
+    this.rightButton.on('pointerout', (pointer) => {
+      this.activePointers.right.delete(pointer.id);
+      if (this.activePointers.right.size === 0) {
+        this.mobileControls.right = false;
+        this.rightButton.setFillStyle(0x444444, 0.7);
+      }
     });
-    this.rightButton.on('pointerupoutside', () => {
-      this.mobileControls.right = false;
-      this.rightButton.setFillStyle(0x444444, 0.7);
+    this.rightButton.on('pointerupoutside', (pointer) => {
+      this.activePointers.right.delete(pointer.id);
+      if (this.activePointers.right.size === 0) {
+        this.mobileControls.right = false;
+        this.rightButton.setFillStyle(0x444444, 0.7);
+      }
     });
 
     // Jump button (lower right corner)
@@ -316,21 +448,32 @@ class GameScene extends Phaser.Scene {
     jumpText.setScrollFactor(0);
     jumpText.setDepth(101);
 
-    this.jumpButton.on('pointerdown', () => {
+    this.jumpButton.on('pointerdown', (pointer) => {
+      this.activePointers.jump.add(pointer.id);
       this.mobileControls.jump = true;
+      this.mobileControls.jumpRequested = true;  // Request jump (persists until executed)
       this.jumpButton.setFillStyle(0x666666, 0.9);
     });
-    this.jumpButton.on('pointerup', () => {
-      this.mobileControls.jump = false;
-      this.jumpButton.setFillStyle(0x444444, 0.7);
+    this.jumpButton.on('pointerup', (pointer) => {
+      this.activePointers.jump.delete(pointer.id);
+      if (this.activePointers.jump.size === 0) {
+        this.mobileControls.jump = false;
+        this.jumpButton.setFillStyle(0x444444, 0.7);
+      }
     });
-    this.jumpButton.on('pointerout', () => {
-      this.mobileControls.jump = false;
-      this.jumpButton.setFillStyle(0x444444, 0.7);
+    this.jumpButton.on('pointerout', (pointer) => {
+      this.activePointers.jump.delete(pointer.id);
+      if (this.activePointers.jump.size === 0) {
+        this.mobileControls.jump = false;
+        this.jumpButton.setFillStyle(0x444444, 0.7);
+      }
     });
-    this.jumpButton.on('pointerupoutside', () => {
-      this.mobileControls.jump = false;
-      this.jumpButton.setFillStyle(0x444444, 0.7);
+    this.jumpButton.on('pointerupoutside', (pointer) => {
+      this.activePointers.jump.delete(pointer.id);
+      if (this.activePointers.jump.size === 0) {
+        this.mobileControls.jump = false;
+        this.jumpButton.setFillStyle(0x444444, 0.7);
+      }
     });
   }
 }
