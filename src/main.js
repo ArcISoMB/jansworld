@@ -870,8 +870,8 @@ const config = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: 3200,
-    height: 2400
+    width: 1600,
+    height: 800
   },
   input: {
     activePointers: 3 // Enable up to 3 simultaneous touch points
