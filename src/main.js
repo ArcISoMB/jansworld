@@ -871,11 +871,35 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: 1600,
-    height: 800
+    height: 800,
+    // Use window.innerHeight which accounts for mobile browser UI (nav bar)
+    parent: document.body,
+    expandParent: false
   },
   input: {
     activePointers: 3 // Enable up to 3 simultaneous touch points
   }
 };
+
+// Function to resize game to fit actual viewport (important for mobile browsers)
+function resizeGame() {
+  const canvas = document.querySelector('canvas');
+  if (canvas) {
+    // window.innerHeight accounts for mobile browser chrome/navigation bars
+    const windowHeight = window.innerHeight;
+    const windowWidth = window.innerWidth;
+    document.body.style.height = windowHeight + 'px';
+  }
+}
+
+// Handle resize and orientation change
+window.addEventListener('resize', resizeGame);
+window.addEventListener('orientationchange', () => {
+  // Delay to allow browser to finish orientation change
+  setTimeout(resizeGame, 100);
+});
+
+// Initial resize
+resizeGame();
 
 const game = new Phaser.Game(config);
