@@ -177,26 +177,21 @@ export class ChallengeUI {
     const gap = 20;  // Ruimte tussen input en button
     const submitButtonHeight = 45;
     
-    // Bereken screen positie voor het HTML input element
-    const canvas = this.scene.game.canvas;
-    const canvasRect = canvas.getBoundingClientRect();
-    const scaleX = canvasRect.width / this.scene.cameras.main.width;
-    const scaleY = canvasRect.height / this.scene.cameras.main.height;
-    
-    const screenX = canvasRect.left + centerX * scaleX;
-    const screenY = canvasRect.top + startY * scaleY;
+    // Store layout values for repositioning
+    this.inputLayoutData = {
+      centerX,
+      startY,
+      inputWidth,
+      inputHeight
+    };
 
     // Maak input element
     this.inputElement = document.createElement('input');
     this.inputElement.type = 'text';
     this.inputElement.placeholder = placeholder;
     this.inputElement.style.cssText = `
-      position: absolute;
-      left: ${screenX - (inputWidth * scaleX) / 2}px;
-      top: ${screenY}px;
-      width: ${inputWidth * scaleX}px;
-      height: ${inputHeight * scaleY}px;
-      font-size: ${20 * scaleY}px;
+      position: fixed;
+      font-size: 20px;
       padding: 5px 10px;
       border: 2px solid #6666ff;
       border-radius: 5px;
@@ -205,9 +200,59 @@ export class ChallengeUI {
       text-align: center;
       z-index: 1000;
       box-sizing: border-box;
+      -webkit-appearance: none;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
     `;
     document.body.appendChild(this.inputElement);
-    this.inputElement.focus();
+    
+    // Position the input element with a small delay for Safari/iPad
+    // Use requestAnimationFrame to ensure layout is settled
+    const positionInput = () => {
+      if (!this.inputElement) return;
+      
+      const canvas = this.scene.game.canvas;
+      const canvasRect = canvas.getBoundingClientRect();
+      const scaleX = canvasRect.width / this.scene.cameras.main.width;
+      const scaleY = canvasRect.height / this.scene.cameras.main.height;
+      
+      const screenX = canvasRect.left + centerX * scaleX;
+      const screenY = canvasRect.top + startY * scaleY;
+      
+      this.inputElement.style.left = `${screenX - (inputWidth * scaleX) / 2}px`;
+      this.inputElement.style.top = `${screenY}px`;
+      this.inputElement.style.width = `${inputWidth * scaleX}px`;
+      this.inputElement.style.height = `${inputHeight * scaleY}px`;
+      // Min 16px to prevent iOS zoom, max 24px to prevent huge text on PC
+      this.inputElement.style.fontSize = `${Math.min(10, Math.max(16, 20 * scaleY))}px`;
+    };
+    
+    // Initial positioning with double RAF for Safari reliability
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        positionInput();
+        // Additional delayed repositioning for Safari layout settling
+        setTimeout(positionInput, 50);
+        setTimeout(positionInput, 150);
+      });
+    });
+    
+    // Store position function for resize handling
+    this.repositionInput = positionInput;
+    
+    // Add resize listener to reposition on orientation change or resize
+    this.resizeHandler = () => {
+      requestAnimationFrame(positionInput);
+    };
+    window.addEventListener('resize', this.resizeHandler);
+    window.addEventListener('orientationchange', this.resizeHandler);
+    
+    // Focus with delay for Safari
+    setTimeout(() => {
+      if (this.inputElement) {
+        this.inputElement.focus();
+      }
+    }, 100);
 
     // Submit knop positie is relatief aan input: input hoogte + gap
     const submitButtonY = startY + inputHeight + gap + submitButtonHeight / 2;
@@ -488,6 +533,15 @@ export class ChallengeUI {
       this.inputElement = null;
     }
     
+    // Clean up resize handlers
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      window.removeEventListener('orientationchange', this.resizeHandler);
+      this.resizeHandler = null;
+    }
+    this.repositionInput = null;
+    this.inputLayoutData = null;
+    
     // Bewaar alleen de eerste 5 elementen (overlay, container, border, closeButton, closeButtonText)
     while (this.elements.length > 5) {
       const element = this.elements.pop();
@@ -502,6 +556,15 @@ export class ChallengeUI {
       this.inputElement.remove();
       this.inputElement = null;
     }
+    
+    // Clean up resize handlers
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      window.removeEventListener('orientationchange', this.resizeHandler);
+      this.resizeHandler = null;
+    }
+    this.repositionInput = null;
+    this.inputLayoutData = null;
     
     this.elements.forEach(element => {
       if (element && element.destroy) {
